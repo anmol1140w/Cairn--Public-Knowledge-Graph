@@ -31,6 +31,10 @@ import {
 } from "@/lib/types";
 import { formatDate } from "@/lib/graph-utils";
 import { useDialog } from "./use-dialog";
+import { ModeProfileForm } from "./profile-form";
+import { PROFILE_TITLES } from "@/lib/profile-fields";
+import { profileSchema } from "@/lib/profiles";
+import { useProfiles } from "@/lib/profile-store";
 
 function ModalShell({
   title,
@@ -186,59 +190,25 @@ function AccessibilityModal() {
       <div className="modal-footnote">
         <Accessibility size={15} /> Preferences are saved on this device.
       </div>
+      <button
+        className="primary-button full-width"
+        onClick={() => s.set({ preferencesSeen: true, modal: null })}
+      >
+        Done
+      </button>
     </ModalShell>
   );
 }
 
 function ProfileModal() {
   const s = useKnowledge();
-  const [value, setValue] = useState(s.skills.join(", "));
   return (
-    <ModalShell title="Your skills" eyebrow="Job matching">
-      <p className="modal-description">
-        Add skills you actually have. We’ll compare them with skills present in
-        opportunity sources.
-      </p>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          const skills = Array.from(
-            new Set(
-              value
-                .split(",")
-                .map((v) => v.trim())
-                .filter(Boolean),
-            ),
-          ).slice(0, 30);
-          s.set({
-            skills,
-            modal: null,
-            toast: skills.length
-              ? `${skills.length} skills saved. Your opportunity matches are updated.`
-              : "Skill profile cleared.",
-          });
-        }}
-      >
-        <label className="form-label" htmlFor="profile-skills">
-          Your skills, separated by commas
-        </label>
-        <textarea
-          id="profile-skills"
-          className="profile-textarea"
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          placeholder="Python, PyTorch, computer vision, research…"
-          maxLength={1000}
-          rows={4}
-        />
-        <p className="modal-footnote">
-          The match is listed-skill overlap, not an assessment of your ability
-          or hiring likelihood.
-        </p>
-        <button className="primary-button full-width" type="submit">
-          Save my skills <Check size={15} />
-        </button>
-      </form>
+    <ModalShell
+      title={PROFILE_TITLES[s.mode]}
+      eyebrow="Optional details"
+      className="profile-modal"
+    >
+      <ModeProfileForm />
     </ModalShell>
   );
 }
@@ -307,10 +277,7 @@ function ExportModal() {
     }
   };
   return (
-    <ModalShell
-      title="Export evidence"
-      eyebrow="EXPORT INVESTIGATION"
-    >
+    <ModalShell title="Export evidence" eyebrow="EXPORT INVESTIGATION">
       <p className="modal-description">
         Source URLs, dates, claim references, and graph relationships stay
         connected in your export.
@@ -925,11 +892,14 @@ function HistoryModal() {
       const response = await fetch(`/api/investigations/${id}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
+      const savedProfile = profileSchema.safeParse(data.investigation.profile);
+      if (savedProfile.success)
+        useProfiles.getState().apply(savedProfile.data, false);
       set({
         run: data.investigation,
         query: data.investigation.query,
         demo: false,
-        mode: "universe",
+        mode: savedProfile.success ? savedProfile.data.mode : "universe",
         modal: null,
         selected: null,
         focus: null,
@@ -951,10 +921,7 @@ function HistoryModal() {
     }
   };
   return (
-    <ModalShell
-      title="Saved investigations"
-      eyebrow="RECENT INVESTIGATIONS"
-    >
+    <ModalShell title="Saved investigations" eyebrow="RECENT INVESTIGATIONS">
       <p className="modal-description">
         Saved for this browser’s private session. Reopening an investigation
         reuses its source snapshot.

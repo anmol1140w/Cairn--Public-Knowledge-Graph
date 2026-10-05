@@ -104,10 +104,11 @@ test("demo progress and meaningful investigation modes", async ({ page }) => {
   await page
     .getByRole("button", { name: "Add your skills", exact: true })
     .click();
+  await page.getByLabel("Add a skill", { exact: true }).fill("Python, PyTorch");
+  await page.getByLabel("Add a skill", { exact: true }).press("Enter");
   await page
-    .getByLabel("Your skills, separated by commas")
-    .fill("Python, PyTorch");
-  await page.getByRole("button", { name: "Save my skills" }).click();
+    .getByRole("button", { name: "Apply details", exact: true })
+    .click();
   await expect(page.locator(".result-relevance").first()).toContainText(
     "listed skills",
   );

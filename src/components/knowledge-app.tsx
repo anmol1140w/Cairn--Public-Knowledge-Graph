@@ -22,9 +22,13 @@ import { AppModals } from "./modals";
 import { BRAND } from "@/lib/brand";
 import { BrandMark } from "./brand-mark";
 import { Explorer } from "./graph/explorer";
+import { useProfiles } from "@/lib/profile-store";
+import { profileChips } from "@/lib/profiles";
 
 export function KnowledgeApp() {
   const s = useKnowledge();
+  const details = useProfiles(),
+    profile = details.profiles[s.mode];
   const set = s.set;
   const { search, cancel } = useSearch();
   const [liveReady, setLiveReady] = useState(false);
@@ -185,6 +189,33 @@ export function KnowledgeApp() {
           </div>
         </header>
         <main inert={Boolean(s.modal || s.evidenceClaim)}>
+          {!s.preferencesSeen && (
+            <section
+              className="preferences-onboarding"
+              aria-label="First-run display preferences"
+            >
+              <div>
+                <h3>Make Cairn comfortable to read</h3>
+                <p>
+                  Choose text size, contrast, motion, language and the
+                  screen-reader view.
+                </p>
+              </div>
+              <button
+                className="secondary-button"
+                onClick={() => s.set({ modal: "accessibility" })}
+              >
+                Choose display preferences
+              </button>
+              <button
+                className="icon-button"
+                aria-label="Dismiss display preferences introduction"
+                onClick={() => s.set({ preferencesSeen: true })}
+              >
+                <X size={20} />
+              </button>
+            </section>
+          )}
           <section
             className="universe-hero"
             aria-label="Knowledge exploration workspace"
@@ -263,8 +294,25 @@ export function KnowledgeApp() {
                   className="secondary-button full-width"
                   onClick={() => s.set({ modal: "profile" })}
                 >
-                  {s.skills.length ? "Edit your details" : "Add your details"}
+                  {profile ? "Edit your details" : "Add your details"}
                 </button>
+                {profile && (
+                  <>
+                    <div className="profile-summary">
+                      {profileChips(profile).map((chip) => (
+                        <span key={chip}>{chip}</span>
+                      ))}
+                    </div>
+                    <button className="text-button" onClick={details.clear}>
+                      Clear my details
+                    </button>
+                    <small>
+                      {details.saveWithInvestigation
+                        ? "Will be saved with your next investigation."
+                        : "Details are stored in this tab."}
+                    </small>
+                  </>
+                )}
                 <h3>Sources</h3>
                 <p>Choose sources or let the planner select them.</p>
                 <div className="source-select">

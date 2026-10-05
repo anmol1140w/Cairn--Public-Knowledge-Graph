@@ -1,6 +1,7 @@
 import type { SourceEngine } from "@/lib/types";
 import type { SearchInput } from "./validation";
 import { ENGINES } from "./engines";
+import { profileQuery, type Profile } from "@/lib/profiles";
 
 export interface PlannedSearch {
   source: SourceEngine;
@@ -45,8 +46,8 @@ export function fallbackPlan(input: SearchInput): SearchPlan {
       source,
       query:
         source === "jobs" && !/job|intern|hiring|career/i.test(q)
-          ? `${input.query} research jobs`
-          : input.query,
+          ? profileQuery(`${input.query} research jobs`, source, input.profile)
+          : profileQuery(input.query, source, input.profile),
       reason: input.sources.length
         ? "Selected by the user."
         : `Relevant to the query’s ${source} intent.`,
@@ -59,6 +60,7 @@ export function fallbackPlan(input: SearchInput): SearchPlan {
 }
 export function engineParameters(
   search: PlannedSearch,
+  profile?: Profile,
 ): Record<string, unknown> {
   const params: Record<string, unknown> = {
     engine: ENGINES[search.source],
@@ -69,6 +71,11 @@ export function engineParameters(
     params.num = 8;
     if (/latest|recent|this year/i.test(search.query))
       params.as_ylo = new Date().getFullYear() - 1;
+    if (profile?.mode === "scholar") {
+      if (profile.yearFrom) params.as_ylo = profile.yearFrom;
+      if (profile.yearTo) params.as_yhi = profile.yearTo;
+      if (profile.sort === "Newest") params.scisbd = 1;
+    }
   }
   if (search.source === "patents") {
     delete params.hl;
@@ -88,5 +95,13 @@ export function engineParameters(
     if (/this week|past week/i.test(search.query)) params.tbs = "qdr:w";
     else if (/this month|past month/i.test(search.query)) params.tbs = "qdr:m";
   }
+  if (profile?.mode === "news" && search.source === "news")
+    params.hl = {
+      English: "en",
+      Hindi: "hi",
+      Spanish: "es",
+      French: "fr",
+      German: "de",
+    }[profile.language];
   return params;
 }

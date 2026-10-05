@@ -15,6 +15,7 @@ interface KnowledgeState {
   mode: Mode;
   demo: boolean;
   theme: "light" | "dark";
+  preferencesSeen: boolean;
   view: "3d" | "2d" | "list";
   query: string;
   sources: SourceEngine[];
@@ -58,6 +59,7 @@ export const useKnowledge = create<KnowledgeState>()(
       mode: "universe",
       demo: true,
       theme: "light",
+      preferencesSeen: false,
       view: "3d",
       query: "",
       sources: [],
@@ -108,9 +110,28 @@ export const useKnowledge = create<KnowledgeState>()(
     }),
     {
       name: "pkg-preferences",
+      version: 1,
+      migrate: (persisted) => {
+        const old = persisted as {
+          accessibility?: AccessibilitySettings;
+          theme?: "light" | "dark";
+        };
+        return {
+          accessibility: old.accessibility ?? {
+            highContrast: false,
+            largeText: false,
+            reducedMotion: false,
+            screenReader: false,
+            simplifiedLanguage: false,
+            keyboardNavigation: true,
+          },
+          theme: old.theme ?? "light",
+          preferencesSeen: false,
+        };
+      },
       partialize: (s) => ({
         accessibility: s.accessibility,
-        skills: s.skills,
+        preferencesSeen: s.preferencesSeen,
         theme: s.theme,
       }),
     },

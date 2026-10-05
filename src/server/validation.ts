@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { profileSchema } from "@/lib/profiles";
 export const entityTypeSchema = z.enum([
   "paper",
   "person",
@@ -41,22 +42,33 @@ export const evidenceSchema = z.object({
   primary: z.boolean().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
-export const searchSchema = z.object({
-  query: z
-    .string()
-    .trim()
-    .min(2, "Ask a question with at least two characters.")
-    .max(600),
-  sources: z
-    .array(sourceSchema)
-    .max(5)
-    .default([])
-    .transform((v) => [...new Set(v)]),
-  mode: z
-    .enum(["universe", "scholar", "news", "jobs", "patents"])
-    .default("universe"),
-  simplified: z.boolean().default(false),
-});
+export const searchSchema = z
+  .object({
+    query: z
+      .string()
+      .trim()
+      .min(2, "Ask a question with at least two characters.")
+      .max(600),
+    sources: z
+      .array(sourceSchema)
+      .max(5)
+      .default([])
+      .transform((v) => [...new Set(v)]),
+    mode: z
+      .enum(["universe", "scholar", "news", "jobs", "patents"])
+      .default("universe"),
+    simplified: z.boolean().default(false),
+    profile: profileSchema.optional(),
+    saveProfile: z.boolean().optional(),
+  })
+  .superRefine((input, ctx) => {
+    if (input.profile && input.profile.mode !== input.mode)
+      ctx.addIssue({
+        code: "custom",
+        path: ["profile"],
+        message: "Profile must match the selected mode.",
+      });
+  });
 export type SearchInput = z.infer<typeof searchSchema>;
 export const relationshipSchema = z.object({
   id: z.string().max(250),
@@ -99,6 +111,8 @@ export const claimSchema = z.object({
     .optional(),
 });
 export const investigationSchema = z.object({
+  profile: profileSchema.optional(),
+  sessionOnly: z.boolean().optional(),
   id: z.string().max(200),
   query: z.string().max(600),
   demo: z.boolean(),

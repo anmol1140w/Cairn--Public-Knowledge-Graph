@@ -189,3 +189,9 @@ export async function failRun(id: string) {
     [id],
   );
 }
+export async function finishSessionOnlyRun(id: string) {
+  await pool().query(
+    "UPDATE search_runs SET status='session-only' WHERE id=$1",
+    [id],
+  );
+}

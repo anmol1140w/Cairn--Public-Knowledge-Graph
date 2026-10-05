@@ -37,6 +37,9 @@ import {
 import { formatDate, relevantEvidence, skillMatch } from "@/lib/graph-utils";
 import { appendEvidence } from "@/lib/append-evidence";
 import { CONFIDENCE_LABELS, evidenceStrength } from "@/lib/confidence";
+import { useProfiles } from "@/lib/profile-store";
+import { rankEvidence } from "@/lib/personalization";
+import { ModeInsights, RequirementChecklist } from "./profile-results";
 
 export function EvidenceCard({
   evidence,
@@ -48,6 +51,7 @@ export function EvidenceCard({
   const s = useKnowledge();
   const match = skillMatch(evidence, s.skills);
   const confidence = evidenceStrength(s.run, evidence.id);
+  const profile = useProfiles((p) => p.profiles.jobs);
   return (
     <motion.article
       className="result-row"
@@ -80,7 +84,10 @@ export function EvidenceCard({
         <p>
           {evidence.snippet ?? "Open the original source for more context."}
         </p>
-        <p className="result-reason">{evidence.primary ? "Primary source record" : "Source record"} retrieved for this investigation.</p>
+        <p className="result-reason">
+          {evidence.primary ? "Primary source record" : "Source record"}{" "}
+          retrieved for this investigation.
+        </p>
         <div className="result-meta">
           <span>{evidence.source}</span>
           <span>·</span>
@@ -118,6 +125,9 @@ export function EvidenceCard({
             View evidence <ShieldCheck size={12} />
           </button>
         </div>
+        {evidence.type === "job" && profile?.mode === "jobs" && (
+          <RequirementChecklist evidence={evidence} profile={profile} />
+        )}
       </div>
       <div className="result-relevance">
         <span>Evidence confidence</span>
@@ -182,8 +192,16 @@ function ResearchTimeline({ items }: { items: Evidence[] }) {
             >
               <defs>
                 <linearGradient id="paperGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.2} />
-                  <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
+                  <stop
+                    offset="0%"
+                    stopColor="var(--accent)"
+                    stopOpacity={0.2}
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor="var(--accent)"
+                    stopOpacity={0}
+                  />
                 </linearGradient>
               </defs>
               <CartesianGrid stroke="var(--border)" vertical={false} />
@@ -364,6 +382,7 @@ export function ResultsSection({
 }) {
   const s = useKnowledge();
   const [category, setCategory] = useState("all");
+  const profile = useProfiles((p) => p.profiles[s.mode]);
   const [filter, setFilter] = useState("");
   const [jobType, setJobType] = useState("all");
   const [remote, setRemote] = useState(false);
@@ -376,7 +395,7 @@ export function ResultsSection({
   const [exhausted, setExhausted] = useState<string[]>([]);
   const current = MODES.find((m) => m.id === s.mode)!;
   const overviewHeading = "What the sources say";
-  const relevant = relevantEvidence(s.run, s.mode);
+  const relevant = rankEvidence(relevantEvidence(s.run, s.mode), profile);
   const items = relevant.filter((item) => {
     if (s.mode === "universe" && category !== "all" && item.type !== category)
       return false;
@@ -460,6 +479,7 @@ export function ResultsSection({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           source,
+          ephemeral: s.run.sessionOnly,
           query: String(item.metadata?.searchQuery ?? s.run.query).slice(
             0,
             600,
@@ -609,6 +629,9 @@ export function ResultsSection({
         </div>
       )}
       {s.mode === "scholar" && <ResearchTimeline items={relevant} />}
+      {s.mode !== "universe" && s.mode !== "jobs" && (
+        <ModeInsights items={items} profile={profile} />
+      )}
       {s.mode === "news" && relevant.length > 0 && (
         <NewsInsights items={relevant} />
       )}

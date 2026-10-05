@@ -8,6 +8,7 @@ import { publicError } from "@/server/config";
 export const runtime = "nodejs";
 export const maxDuration = 70;
 const schema = z.object({
+  ephemeral: z.boolean().optional(),
   source: z.enum(["scholar", "jobs", "patents", "web"]),
   query: z.string().min(2).max(600),
   cursor: z.union([
@@ -72,6 +73,7 @@ export async function POST(request: NextRequest) {
       sessionId: user.id,
       runId: null,
       signal: request.signal,
+      ephemeral: input.ephemeral,
     });
     const response = NextResponse.json({
       evidence: normalizeResults(

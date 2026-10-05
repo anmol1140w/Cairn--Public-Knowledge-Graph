@@ -111,6 +111,7 @@ export function EntityPanel({
         body: JSON.stringify({
           evidence: main ? { ...main, metadata } : undefined,
           kind,
+          ephemeral: s.run.sessionOnly,
           query: node.title,
           token: questions.find((q) => q.nextPageToken)?.nextPageToken,
         }),

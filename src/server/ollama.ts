@@ -41,6 +41,7 @@ export async function modelJson<T>(
   schema: z.ZodType<T>,
   signal?: AbortSignal,
   maxTokens = 2800,
+  cache = true,
 ): Promise<T> {
   if (!config.ollamaKey())
     throw new Error(
@@ -48,7 +49,7 @@ export async function modelJson<T>(
     );
   const schemaText = JSON.stringify(z.toJSONSchema(schema));
   const cacheKey = `model-${createHash("sha256").update(JSON.stringify({ model, system, prompt, schemaText })).digest("hex")}`;
-  const cached = await readCache(cacheKey).catch(() => null);
+  const cached = cache ? await readCache(cacheKey).catch(() => null) : null;
   if (cached) {
     const parsed = schema.safeParse(cached.payload.value);
     if (parsed.success) return parsed.data;
@@ -81,13 +82,14 @@ export async function modelJson<T>(
       });
       try {
         const parsed = schema.parse(extractJson(response.message.content));
-        await writeCache(
-          cacheKey,
-          `ollama:${model}`,
-          { model },
-          { value: parsed },
-          3600,
-        ).catch(() => {});
+        if (cache)
+          await writeCache(
+            cacheKey,
+            `ollama:${model}`,
+            { model },
+            { value: parsed },
+            3600,
+          ).catch(() => {});
         return parsed;
       } catch (error) {
         lastError = error;

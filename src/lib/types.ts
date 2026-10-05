@@ -1,3 +1,4 @@
+import type { Profile } from "./profiles";
 export type SourceEngine = "scholar" | "jobs" | "news" | "patents" | "web";
 export type EntityType =
   | "paper"
@@ -81,6 +82,8 @@ export interface SourceStatus {
 }
 
 export interface Investigation {
+  profile?: Profile;
+  sessionOnly?: boolean;
   id: string;
   query: string;
   demo: boolean;

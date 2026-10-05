@@ -15,6 +15,7 @@ import {
 export const runtime = "nodejs";
 export const maxDuration = 70;
 const detailsSchema = z.object({
+  ephemeral: z.boolean().optional(),
   evidence: evidenceSchema.optional(),
   kind: z
     .enum(["auto", "cites", "trends", "related", "listing"])
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
       sessionId: user.id,
       runId: null,
       signal: request.signal,
+      ephemeral: input.ephemeral,
     });
     const data = result.payload;
     if (params.engine === ENGINES.author) {

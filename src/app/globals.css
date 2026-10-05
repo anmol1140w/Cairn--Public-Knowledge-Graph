@@ -31,6 +31,200 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
 }
+.preferences-onboarding {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 32px;
+  background: var(--accent-soft);
+  border-bottom: 1px solid var(--border);
+}
+.preferences-onboarding > div {
+  flex: 1;
+}
+.preferences-onboarding p {
+  margin-top: 8px;
+}
+.profile-summary {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.profile-summary span {
+  font-size: calc(14px * var(--text-scale));
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.profile-modal {
+  width: 760px;
+}
+.profile-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin: 24px 0;
+}
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.profile-field label {
+  font-size: calc(14px * var(--text-scale));
+}
+.profile-field :is(input, textarea, select) {
+  width: 100%;
+  font-size: 1em;
+}
+.wide-field {
+  grid-column: 1 / -1;
+}
+.tag-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tag-entry {
+  display: flex;
+  gap: 8px;
+}
+.tag-entry input {
+  flex: 1;
+  min-width: 0;
+}
+.detail-chips,
+.suggestion-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.detail-chips button,
+.suggestion-chips button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: calc(14px * var(--text-scale));
+}
+.detail-chips button {
+  background: var(--accent-soft);
+}
+.skill-detail {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  padding: 12px 0;
+}
+.skill-detail > strong {
+  flex: 1;
+}
+.skill-detail select {
+  display: block;
+  margin-top: 4px;
+}
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  font-size: calc(14px * var(--text-scale));
+}
+.checkbox-field input[type="checkbox"] {
+  width: 20px;
+  flex-shrink: 0;
+}
+.profile-more,
+.privacy-explanation,
+.requirement-checklist {
+  margin: 24px 0;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+:is(.profile-more, .privacy-explanation, .mode-insights, .requirement-checklist)
+  summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--accent);
+}
+.privacy-explanation p {
+  margin: 12px 0;
+}
+.profile-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+.field-error {
+  font-size: calc(14px * var(--text-scale));
+  border-left: 3px solid var(--accent);
+  padding-left: 12px;
+}
+.local-resume input {
+  display: block;
+  width: 100%;
+  margin: 12px 0;
+}
+.mode-insights {
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  margin: 24px 0;
+}
+.mode-insights h3:not(:first-child) {
+  margin-top: 24px;
+}
+.mode-insights p {
+  margin: 12px 0;
+}
+.mode-insights li {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.mode-insights li :is(strong, time, span) {
+  display: block;
+}
+.mode-insights blockquote,
+.requirement-checklist blockquote {
+  border-left: 2px solid var(--accent);
+  margin: 16px 0;
+  padding-left: 16px;
+}
+.citation-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: calc(14px * var(--text-scale));
+  padding: 16px;
+  background: var(--surface-raised);
+  border-radius: 8px;
+}
+@media (max-width: 799px) {
+  .preferences-onboarding {
+    flex-wrap: wrap;
+    padding: 20px 16px;
+  }
+  .preferences-onboarding > div {
+    flex-basis: 100%;
+  }
+  .profile-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .skill-detail {
+    gap: 12px;
+  }
+}
 .explorer .scene-stage {
   height: 70vh;
   min-height: 400px;

@@ -16,6 +16,7 @@ export interface SearchContext {
   sessionId: string;
   runId: string | null;
   signal?: AbortSignal;
+  ephemeral?: boolean;
 }
 const inFlight = new Map<string, Promise<ToolResult>>();
 let active = 0;
@@ -123,7 +124,8 @@ export async function serpapiSearch(
       if (payload.error) throw new Error(String(payload.error));
       const ttl =
         engine === "google_news" || engine === "google_jobs" ? 900 : 3600;
-      await writeCache(key, engine, safeParams, payload, ttl);
+      if (!context.ephemeral)
+        await writeCache(key, engine, safeParams, payload, ttl);
       await finishRequest(reserved, "success");
       return { payload, cached: false, retrievedAt: new Date().toISOString() };
     } catch (error) {

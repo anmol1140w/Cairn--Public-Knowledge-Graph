@@ -2,6 +2,7 @@
 import { useRef } from "react";
 import { DEMO } from "./demo";
 import { useKnowledge } from "./store";
+import { useProfiles } from "./profile-store";
 import type { Investigation, ProgressEvent, SourceEngine } from "./types";
 
 export const STAGES = [
@@ -20,16 +21,17 @@ export function useSearch() {
   const controller = useRef<AbortController | null>(null);
   const cancel = () => {
     controller.current?.abort();
-    useKnowledge
-      .getState()
-      .set({
-        searching: false,
-        error:
-          "Investigation cancelled. You can search again whenever you’re ready.",
-      });
+    useKnowledge.getState().set({
+      searching: false,
+      error:
+        "Investigation cancelled. You can search again whenever you’re ready.",
+    });
   };
   const search = async (override?: string, sourceOverride?: SourceEngine[]) => {
     const state = useKnowledge.getState();
+    const details = useProfiles.getState(),
+      profile = details.profiles[state.mode];
+    const saveProfile = Boolean(profile && details.saveWithInvestigation);
     const query = (override ?? state.query).trim();
     if (!query) {
       document.getElementById("knowledge-search")?.focus();
@@ -137,6 +139,7 @@ export function useSearch() {
         }
         set({
           run,
+          ...(saveProfile ? { run: { ...run, profile } } : {}),
           searching: false,
           hasSearched: true,
           sourceStatuses: run.sources,
@@ -145,6 +148,7 @@ export function useSearch() {
               ? "Demo explores efficient AI inference. Switch to Live for your own question."
               : "Your evidence universe is ready.",
         });
+        details.consumeConsent();
         return;
       }
       const response = await fetch("/api/search", {
@@ -155,6 +159,8 @@ export function useSearch() {
           sources: sourceOverride ?? state.sources,
           mode: state.mode,
           simplified: state.accessibility.simplifiedLanguage,
+          profile,
+          saveProfile,
         }),
         signal: abort.signal,
       });
@@ -200,6 +206,7 @@ export function useSearch() {
             });
           if (event.kind === "result" && event.result) {
             receivedResult = true;
+            details.consumeConsent();
             set({
               run: event.result,
               searching: false,

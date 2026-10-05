@@ -7,6 +7,7 @@ import {
   beginRun,
   failRun,
   saveInvestigation,
+  finishSessionOnlyRun,
 } from "@/server/storage";
 import { bodyJson, sameOrigin, session, sessionCookie } from "@/server/http";
 import { config, publicError } from "@/server/config";
@@ -71,7 +72,9 @@ export async function POST(request: NextRequest) {
           emit,
         );
         try {
-          await saveInvestigation(result, user.id);
+          if (input.profile && !input.saveProfile)
+            await finishSessionOnlyRun(runId);
+          else await saveInvestigation(result, user.id);
         } catch {
           result.warnings.push(
             "The investigation completed, but its final snapshot could not be persisted. Export your evidence to keep a copy.",
