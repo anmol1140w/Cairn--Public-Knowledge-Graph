@@ -31,6 +31,65 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
 }
+.explorer .scene-stage {
+  height: 70vh;
+  min-height: 400px;
+  max-height: 800px;
+}
+.explorer-compact .scene-stage {
+  height: 45vh;
+  min-height: 320px;
+}
+.explorer-full .scene-stage {
+  height: 85vh;
+  max-height: none;
+}
+.explorer-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: var(--background);
+  padding: 20px;
+  overflow: auto;
+}
+.explorer-fullscreen .scene-stage {
+  height: calc(100dvh - 260px);
+  min-height: 200px;
+  max-height: none;
+}
+.viewer-active {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.scene-stage {
+  touch-action: pan-y;
+}
+.viewer-active,
+.viewer-active canvas {
+  touch-action: none;
+}
+.scene-stage:not(.viewer-active) canvas {
+  touch-action: pan-y !important;
+}
+.viewer-options {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.viewer-options label {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: calc(14px * var(--text-scale));
+}
+.zoom-readout {
+  font-family: ui-monospace, monospace;
+  font-size: calc(14px * var(--text-scale));
+  min-width: 60px;
+  text-align: center;
+}
 * {
   box-sizing: border-box;
 }

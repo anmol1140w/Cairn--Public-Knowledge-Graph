@@ -2,7 +2,9 @@
 import dynamic from "next/dynamic";
 import {
   Component,
+  useEffect,
   useMemo,
+  useRef,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -13,10 +15,18 @@ import {
   List,
   Network,
   SlidersHorizontal,
+  Maximize2,
+  Minimize2,
+  Plus,
+  Minus,
+  RotateCcw,
+  Pause,
+  Play,
 } from "lucide-react";
 import { useKnowledge } from "@/lib/store";
 import { CATEGORIES } from "@/lib/types";
 import { visibleEntities } from "@/lib/graph-utils";
+import { useExplorer } from "@/lib/explorer-store";
 import { FlatGraph } from "./flat-graph";
 const Universe = dynamic(() => import("./universe"), {
   ssr: false,
@@ -46,6 +56,8 @@ class CanvasBoundary extends Component<
 }
 export function Explorer() {
   const s = useKnowledge();
+  const viewer = useExplorer();
+  const stage = useRef<HTMLDivElement>(null);
   const desktop = useSyncExternalStore(
     subscribe,
     () => window.matchMedia("(min-width: 800px)").matches,
@@ -61,15 +73,113 @@ export function Explorer() {
     (edge) => ids.has(edge.source) && ids.has(edge.target),
   );
   const isList = s.view === "list" || s.accessibility.screenReader;
+  useEffect(() => {
+    const element = stage.current;
+    if (!element) return;
+    const wheel = (event: WheelEvent) => {
+      if (
+        !useExplorer.getState().active ||
+        useKnowledge.getState().view === "list" ||
+        useKnowledge.getState().accessibility.screenReader
+      )
+        return;
+      event.preventDefault();
+      useExplorer.getState().request(event.deltaY < 0 ? "zoom-in" : "zoom-out");
+    };
+    element.addEventListener("wheel", wheel, { passive: false });
+    return () => element.removeEventListener("wheel", wheel);
+  }, []);
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const v = useExplorer.getState();
+      if (!v.active && !v.fullscreen) return;
+      if (
+        ["INPUT", "TEXTAREA", "SELECT"].includes(
+          (event.target as HTMLElement).tagName,
+        ) ||
+        useKnowledge.getState().modal ||
+        useKnowledge.getState().evidenceClaim
+      )
+        return;
+      const keys = {
+        "+": "zoom-in",
+        "=": "zoom-in",
+        "-": "zoom-out",
+        "0": "fit",
+        ArrowLeft: "pan-left",
+        ArrowRight: "pan-right",
+        ArrowUp: "pan-up",
+        ArrowDown: "pan-down",
+      } as const;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        v.set({ active: false, fullscreen: false });
+        stage.current?.blur();
+        return;
+      }
+      if (event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        v.set({ fullscreen: !v.fullscreen });
+        return;
+      }
+      if (event.key in keys) {
+        event.preventDefault();
+        v.request(keys[event.key as keyof typeof keys]);
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, []);
+  useEffect(() => {
+    if (!viewer.fullscreen) return;
+    const y = window.scrollY,
+      overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    stage.current?.focus({ preventScroll: true });
+    return () => {
+      document.body.style.overflow = overflow;
+      window.scrollTo({ top: y, behavior: "instant" });
+    };
+  }, [viewer.fullscreen]);
+  useEffect(() => {
+    const release = (event: PointerEvent) => {
+      if (!(event.target as HTMLElement).closest(".explorer"))
+        useExplorer.getState().set({ active: false });
+    };
+    document.addEventListener("pointerdown", release);
+    return () => document.removeEventListener("pointerdown", release);
+  }, []);
   return (
-    <section className="explorer" aria-label="Explorer">
+    <section
+      className={`explorer explorer-${viewer.preset} ${viewer.fullscreen ? "explorer-fullscreen" : ""}`}
+      aria-label="Explorer"
+    >
       <div className="explorer-heading">
         <h2>Explorer</h2>
         <span className="muted">
           {nodes.length} entities · {edges.length} connections
         </span>
       </div>
-      <div className="scene-stage" aria-label="Knowledge graph">
+      <div
+        ref={stage}
+        className={`scene-stage ${viewer.active ? "viewer-active" : ""}`}
+        aria-label="Knowledge graph"
+        tabIndex={0}
+        onPointerDownCapture={() => {
+          viewer.set({ active: true });
+          viewer.interact();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            viewer.set({ active: true });
+          }
+        }}
+        onContextMenu={(event) => {
+          if (viewer.active) event.preventDefault();
+        }}
+      >
         {isList ? (
           <div className="graph-list">
             {nodes.map((node) => (
@@ -119,10 +229,36 @@ export function Explorer() {
         <div className="graph-tool-group">
           <button
             className="icon-button"
-            aria-label="Reset graph"
-            onClick={s.resetGraph}
+            aria-label="Zoom in"
+            onClick={() => viewer.request("zoom-in")}
           >
-            <Focus size={20} />
+            <Plus size={20} />
+          </button>
+          <button
+            className="icon-button"
+            aria-label="Zoom out"
+            onClick={() => viewer.request("zoom-out")}
+          >
+            <Minus size={20} />
+          </button>
+          <span className="zoom-readout" aria-live="polite">
+            {Math.round(viewer.zoom * 100)}%
+          </span>
+          <button className="view-button" onClick={() => viewer.request("fit")}>
+            <Focus size={18} />
+            Fit to view
+          </button>
+        </div>
+        <div className="graph-tool-group">
+          <button
+            className="icon-button"
+            aria-label="Reset graph"
+            onClick={() => {
+              s.resetGraph();
+              viewer.request("reset");
+            }}
+          >
+            <RotateCcw size={20} />
           </button>
           <button
             className={`view-button ${s.view === "3d" && desktop ? "active" : ""}`}
@@ -148,6 +284,33 @@ export function Explorer() {
             List
           </button>
         </div>
+        <div className="graph-tool-group">
+          <button
+            className="view-button"
+            aria-label="Auto-rotate"
+            aria-pressed={viewer.autoRotate && !s.accessibility.reducedMotion}
+            disabled={s.accessibility.reducedMotion || !desktop || isList}
+            onClick={() => viewer.set({ autoRotate: !viewer.autoRotate })}
+          >
+            {viewer.autoRotate ? <Pause size={18} /> : <Play size={18} />}Rotate
+          </button>
+          <button
+            className="view-button"
+            aria-label={
+              viewer.fullscreen ? "Exit fullscreen" : "Fullscreen Explorer"
+            }
+            onClick={() =>
+              viewer.set({ fullscreen: !viewer.fullscreen, active: true })
+            }
+          >
+            {viewer.fullscreen ? (
+              <Minimize2 size={18} />
+            ) : (
+              <Maximize2 size={18} />
+            )}
+            {viewer.fullscreen ? "Close" : "Fullscreen"}
+          </button>
+        </div>
         <button
           className="secondary-button"
           aria-label="Open timeline"
@@ -157,6 +320,37 @@ export function Explorer() {
           Timeline
         </button>
       </div>
+      <div className="viewer-options">
+        <label>
+          Viewer size
+          <select
+            value={viewer.preset}
+            onChange={(event) =>
+              viewer.set({ preset: event.target.value as typeof viewer.preset })
+            }
+          >
+            <option value="compact">Compact</option>
+            <option value="large">Large</option>
+            <option value="full">Full</option>
+          </select>
+        </label>
+        <button
+          className="text-button"
+          onClick={() => {
+            viewer.set({ active: !viewer.active });
+            stage.current?.focus({ preventScroll: true });
+          }}
+        >
+          {viewer.active ? "Release viewer focus" : "Activate viewer"}
+        </button>
+      </div>
+      <p className="explorer-caption">
+        {viewer.active
+          ? "Viewer active. Wheel to zoom. Esc releases focus."
+          : "Click the viewer to enable zoom. Scroll the page normally until then."}{" "}
+        Drag to rotate in 3D or pan in 2D; right-drag pans. +/− zoom · 0 fit · F
+        fullscreen · arrows pan.
+      </p>
       <p className="explorer-caption">
         Solid: source-linked · Dashed: inferred association
       </p>

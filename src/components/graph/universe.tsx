@@ -2,10 +2,11 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Line, OrbitControls } from "@react-three/drei";
 import { useEffect, useMemo, useRef } from "react";
-import { Vector3 } from "three";
+import { Vector3, MOUSE, TOUCH } from "three";
 import type { OrbitControls as OrbitControlsType } from "three-stdlib";
 import { CATEGORIES, type GraphEntity, type Relationship } from "@/lib/types";
 import { useKnowledge } from "@/lib/store";
+import { useExplorer } from "@/lib/explorer-store";
 
 function CameraDirector({
   nodes,
@@ -14,26 +15,63 @@ function CameraDirector({
   nodes: GraphEntity[];
   controls: React.RefObject<OrbitControlsType | null>;
 }) {
-  const selected = useKnowledge((s) => s.selected ?? s.focus);
+  const command = useExplorer((s) => s.command);
   const reset = useKnowledge((s) => s.cameraReset);
   const reduced = useKnowledge((s) => s.accessibility.reducedMotion);
   const { camera } = useThree();
   const destination = useRef<Vector3 | null>(null),
     target = useRef(new Vector3());
   useEffect(() => {
-    const node = nodes.find((n) => n.id === selected);
-    target.current.set(...(node?.position ?? [0, 0, 0]));
-    destination.current = node
-      ? new Vector3(node.position[0] * 0.6, node.position[1] * 0.6, 10.5)
-      : new Vector3(0, 0, 16);
-  }, [selected, reset, nodes]);
+    const control = controls.current;
+    if (!control) return;
+    const kind = command.kind;
+    target.current.copy(control.target);
+    const offset = camera.position.clone().sub(control.target);
+    if (kind === "zoom-in" || kind === "zoom-out") {
+      destination.current = control.target
+        .clone()
+        .add(offset.multiplyScalar(kind === "zoom-in" ? 1 / 1.15 : 1.15));
+    } else if (kind.startsWith("pan-")) {
+      const direction = new Vector3(
+        kind === "pan-left" ? -0.5 : kind === "pan-right" ? 0.5 : 0,
+        kind === "pan-up" ? 0.5 : kind === "pan-down" ? -0.5 : 0,
+        0,
+      ).applyQuaternion(camera.quaternion);
+      target.current.add(direction);
+      destination.current = camera.position.clone().add(direction);
+    } else if (kind === "focus") {
+      const node = nodes.find((n) => n.id === useKnowledge.getState().selected);
+      if (node) {
+        target.current.set(...node.position);
+        destination.current = target.current
+          .clone()
+          .add(offset.normalize().multiplyScalar(7));
+      }
+    } else {
+      target.current.set(0, 0, 0);
+      destination.current = new Vector3(0, 0, 16);
+    }
+  }, [command, reset, nodes, camera, controls]);
   useFrame((_, delta) => {
     if (!destination.current || !controls.current) return;
     const speed = reduced ? 1 : Math.min(delta * 6, 1);
     camera.position.lerp(destination.current, speed);
     controls.current.target.lerp(target.current, speed);
-    if (camera.position.distanceTo(destination.current) < 0.015)
+    if (camera.position.distanceTo(destination.current) < 0.015) {
       destination.current = null;
+      useExplorer
+        .getState()
+        .set({
+          camera: {
+            position: camera.position.toArray() as [number, number, number],
+            target: controls.current.target.toArray() as [
+              number,
+              number,
+              number,
+            ],
+          },
+        });
+    }
     controls.current.update();
   });
   return null;
@@ -71,6 +109,7 @@ function Scene({
   labels: React.RefObject<Map<string, HTMLButtonElement>>;
 }) {
   const s = useKnowledge();
+  const active = useExplorer((v) => v.active);
   const controls = useRef<OrbitControlsType>(null);
   const map = new Map(nodes.map((node) => [node.id, node]));
   const accent = s.theme === "dark" ? "#a0d6c9" : "#29665c";
@@ -104,6 +143,11 @@ function Scene({
             event.stopPropagation();
             s.select(node.id);
           }}
+          onDoubleClick={(event) => {
+            event.stopPropagation();
+            s.select(node.id);
+            useExplorer.getState().request("focus");
+          }}
           onPointerOver={(event) => {
             event.stopPropagation();
             s.set({ hovered: node.id });
@@ -135,6 +179,34 @@ function Scene({
       ))}
       <OrbitControls
         ref={controls}
+        enabled={active}
+        enableZoom={false}
+        mouseButtons={{
+          LEFT: MOUSE.ROTATE,
+          MIDDLE: MOUSE.PAN,
+          RIGHT: MOUSE.PAN,
+        }}
+        touches={{ ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN }}
+        onStart={() => useExplorer.getState().interact()}
+        onEnd={() => {
+          const v = useExplorer.getState();
+          v.interact();
+          if (controls.current)
+            v.set({
+              camera: {
+                position: controls.current.object.position.toArray() as [
+                  number,
+                  number,
+                  number,
+                ],
+                target: controls.current.target.toArray() as [
+                  number,
+                  number,
+                  number,
+                ],
+              },
+            });
+        }}
         enableDamping={!s.accessibility.reducedMotion}
         dampingFactor={0.12}
         minDistance={5}
@@ -156,11 +228,19 @@ export default function Universe({
   onFailure: () => void;
 }) {
   const labels = useRef(new Map<string, HTMLButtonElement>());
+  const pinchDistance = useRef(0);
   const s = useKnowledge();
   return (
-    <div className="three-universe">
+    <div className="three-universe" onTouchStart={(event) => { if (event.touches.length === 2) pinchDistance.current = Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY); }} onTouchMove={(event) => {
+      if (!useExplorer.getState().active || event.touches.length !== 2) return;
+      const distance = Math.hypot(event.touches[0].clientX - event.touches[1].clientX, event.touches[0].clientY - event.touches[1].clientY);
+      if (Math.abs(distance - pinchDistance.current) > 8) { useExplorer.getState().request(distance > pinchDistance.current ? "zoom-in" : "zoom-out"); pinchDistance.current = distance; }
+    }} onTouchEnd={() => { pinchDistance.current = 0; }}>
       <Canvas
-        camera={{ position: [0, 0, 16], fov: 41 }}
+        camera={{
+          position: useExplorer.getState().camera?.position ?? [0, 0, 16],
+          fov: 41,
+        }}
         dpr={[1, 1.6]}
         gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
         onCreated={({ gl }) => {
@@ -189,6 +269,10 @@ export default function Universe({
             }}
             className={`node-label projected-node-label ${s.selected === node.id ? "selected" : ""}`}
             onClick={() => s.select(node.id)}
+            onDoubleClick={() => {
+              s.select(node.id);
+              useExplorer.getState().request("focus");
+            }}
             onMouseEnter={() => s.set({ hovered: node.id })}
             onMouseLeave={() => s.set({ hovered: null })}
             tabIndex={-1}
