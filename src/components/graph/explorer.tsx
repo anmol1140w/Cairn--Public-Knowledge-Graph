@@ -5,6 +5,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
   useSyncExternalStore,
   type ReactNode,
 } from "react";
@@ -28,6 +29,7 @@ import { CATEGORIES } from "@/lib/types";
 import { visibleEntities } from "@/lib/graph-utils";
 import { useExplorer } from "@/lib/explorer-store";
 import { FlatGraph } from "./flat-graph";
+import { layoutGraph, type Point } from "@/lib/graph-layout";
 const Universe = dynamic(() => import("./universe"), {
   ssr: false,
   loading: () => (
@@ -42,6 +44,7 @@ const subscribe = (callback: () => void) => {
   media.addEventListener("change", callback);
   return () => media.removeEventListener("change", callback);
 };
+const subscribeMotion = (callback: () => void) => { const media = window.matchMedia("(prefers-reduced-motion: reduce)"); media.addEventListener("change", callback); return () => media.removeEventListener("change", callback); };
 class CanvasBoundary extends Component<
   { children: ReactNode; fallback: ReactNode },
   { failed: boolean }
@@ -58,20 +61,41 @@ export function Explorer() {
   const s = useKnowledge();
   const viewer = useExplorer();
   const stage = useRef<HTMLDivElement>(null);
+  const layoutCache = useMemo(() => ({ investigationId: s.run.id, positions: new Map<string, Point>() }), [s.run.id]);
+  const layout = useMemo(
+    () => layoutGraph(s.run.entities, s.run.relationships, layoutCache.positions),
+    [s.run.entities, s.run.relationships, layoutCache],
+  );
+  const [limit, setLimit] = useState(1000);
   const desktop = useSyncExternalStore(
     subscribe,
     () => window.matchMedia("(min-width: 800px)").matches,
     () => false,
   );
+  const reducedOS = useSyncExternalStore(subscribeMotion, () => window.matchMedia("(prefers-reduced-motion: reduce)").matches, () => false);
   const nodes = useMemo(
     () =>
-      visibleEntities(s.run, s.mode, s.graphFilter, s.year, s.focus, s.hops),
-    [s.run, s.mode, s.graphFilter, s.year, s.focus, s.hops],
+      visibleEntities(
+        { ...s.run, entities: layout },
+        s.mode,
+        s.graphFilter,
+        s.year,
+        s.focus,
+        s.hops,
+      ),
+    [s.run, layout, s.mode, s.graphFilter, s.year, s.focus, s.hops],
   );
-  const ids = new Set(nodes.map((node) => node.id));
-  const edges = s.run.relationships.filter(
-    (edge) => ids.has(edge.source) && ids.has(edge.target),
-  );
+  const renderedNodes = useMemo(() => nodes.slice(0, limit), [nodes, limit]);
+  const edges = useMemo(() => {
+    const ids = new Set(renderedNodes.map((node) => node.id));
+    return s.run.relationships.filter(
+      (edge) => ids.has(edge.source) && ids.has(edge.target),
+    );
+  }, [s.run.relationships, renderedNodes]);
+  const request = viewer.request;
+  useEffect(() => {
+    request("fit");
+  }, [nodes, request]);
   const isList = s.view === "list" || s.accessibility.screenReader;
   useEffect(() => {
     const element = stage.current;
@@ -166,6 +190,11 @@ export function Explorer() {
         className={`scene-stage ${viewer.active ? "viewer-active" : ""}`}
         aria-label="Knowledge graph"
         tabIndex={0}
+        onPointerEnter={() => viewer.set({ hovering: true })}
+        onPointerLeave={() => {
+          viewer.set({ hovering: false, dragging: false });
+          viewer.interact();
+        }}
         onPointerDownCapture={() => {
           viewer.set({ active: true });
           viewer.interact();
@@ -182,7 +211,7 @@ export function Explorer() {
       >
         {isList ? (
           <div className="graph-list">
-            {nodes.map((node) => (
+            {renderedNodes.map((node) => (
               <button key={node.id} onClick={() => s.select(node.id)}>
                 <span className="category-dot" />
                 <span>
@@ -194,9 +223,11 @@ export function Explorer() {
             ))}
           </div>
         ) : desktop && s.view === "3d" ? (
-          <CanvasBoundary fallback={<FlatGraph nodes={nodes} edges={edges} />}>
+          <CanvasBoundary
+            fallback={<FlatGraph nodes={renderedNodes} edges={edges} />}
+          >
             <Universe
-              nodes={nodes}
+              nodes={renderedNodes}
               edges={edges}
               onFailure={() =>
                 s.set({
@@ -208,7 +239,7 @@ export function Explorer() {
             />
           </CanvasBoundary>
         ) : (
-          <FlatGraph nodes={nodes} edges={edges} />
+          <FlatGraph nodes={renderedNodes} edges={edges} />
         )}
         {!nodes.length && (
           <div className="graph-empty">
@@ -226,6 +257,14 @@ export function Explorer() {
         </div>
       </div>
       <div className="graph-tools">
+        {nodes.length > limit && (
+          <button
+            className="secondary-button"
+            onClick={() => setLimit((n) => n + 1000)}
+          >
+            Show more ({nodes.length - limit} remaining)
+          </button>
+        )}
         <div className="graph-tool-group">
           <button
             className="icon-button"
@@ -288,8 +327,8 @@ export function Explorer() {
           <button
             className="view-button"
             aria-label="Auto-rotate"
-            aria-pressed={viewer.autoRotate && !s.accessibility.reducedMotion}
-            disabled={s.accessibility.reducedMotion || !desktop || isList}
+            aria-pressed={viewer.autoRotate && !s.accessibility.reducedMotion && !reducedOS}
+            disabled={s.accessibility.reducedMotion || reducedOS || !desktop || isList}
             onClick={() => viewer.set({ autoRotate: !viewer.autoRotate })}
           >
             {viewer.autoRotate ? <Pause size={18} /> : <Play size={18} />}Rotate

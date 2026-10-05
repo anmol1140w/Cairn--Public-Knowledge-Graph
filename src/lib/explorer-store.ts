@@ -16,6 +16,8 @@ type Command =
   | "focus";
 interface ExplorerState {
   active: boolean;
+  hovering: boolean;
+  dragging: boolean;
   fullscreen: boolean;
   preset: "compact" | "large" | "full";
   autoRotate: boolean;
@@ -30,6 +32,8 @@ interface ExplorerState {
 }
 export const useExplorer = create<ExplorerState>((set) => ({
   active: false,
+  hovering: false,
+  dragging: false,
   fullscreen: false,
   preset: "large",
   autoRotate: true,
