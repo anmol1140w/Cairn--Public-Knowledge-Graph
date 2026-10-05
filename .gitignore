@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next-tests/
 /out/
 
 # production
@@ -22,7 +23,14 @@
 
 # misc
 .DS_Store
+Thumbs.db
 *.pem
+
+# editor files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
 
 # debug
 npm-debug.log*
@@ -32,6 +40,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+/test-results/
+/playwright-report/
+/artifacts/
 
 # vercel
 .vercel

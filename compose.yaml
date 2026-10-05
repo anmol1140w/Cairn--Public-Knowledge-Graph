@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: public-knowledge-graph-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pkg
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?Set PG_PASSWORD in .env.local}
+      POSTGRES_DB: public_knowledge_graph
+    ports:
+      - "127.0.0.1:15432:5432"
+    volumes:
+      - pkg_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pkg -d public_knowledge_graph"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  pkg_postgres_data:
