@@ -24,6 +24,7 @@ import { BrandMark } from "./brand-mark";
 import { Explorer } from "./graph/explorer";
 import { useProfiles } from "@/lib/profile-store";
 import { profileChips } from "@/lib/profiles";
+import { EXAMPLES } from "@/lib/examples";
 
 export function KnowledgeApp() {
   const s = useKnowledge();
@@ -31,7 +32,7 @@ export function KnowledgeApp() {
     profile = details.profiles[s.mode];
   const set = s.set;
   const { search, cancel } = useSearch();
-  const [liveReady, setLiveReady] = useState(false);
+  const [liveReady, setLiveReady] = useState<boolean | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const activeMode = MODES.find((mode) => mode.id === s.mode)!;
   useEffect(() => {
@@ -156,7 +157,7 @@ export function KnowledgeApp() {
               aria-label={
                 s.demo ? "Switch to live search" : "Switch to demo mode"
               }
-              disabled={s.searching}
+              disabled={s.searching || liveReady === null}
             >
               <span className="status-dot" />
               {s.demo ? "Demo data" : "Live"}
@@ -280,6 +281,39 @@ export function KnowledgeApp() {
                   >
                     {PROMPTS[0]} <ArrowRight size={14} />
                   </button>
+                </div>
+              </div>
+              <div className="demo-examples" aria-label="Preloaded examples">
+                <span>Try an example · no live requests</span>
+                <div>
+                  {EXAMPLES.map((example) => (
+                    <button
+                      className="example-card"
+                      key={example.id}
+                      disabled={s.searching}
+                      onClick={() => {
+                        s.resetGraph();
+                        s.set({
+                          run: example.run,
+                          mode: example.mode,
+                          demo: true,
+                          query: example.run.query,
+                          sources: [],
+                          error: null,
+                          hasSearched: true,
+                          sourceStatuses: example.run.sources,
+                          toast:
+                            "Preloaded example opened. No search or model requests.",
+                        });
+                      }}
+                    >
+                      <strong>
+                        {MODES.find((mode) => mode.id === example.mode)!.label}
+                      </strong>
+                      <span>{example.title}</span>
+                      <ArrowRight size={18} />
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

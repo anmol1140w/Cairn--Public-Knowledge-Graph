@@ -1,9 +1,10 @@
 "use client";
 import { useRef } from "react";
 import { DEMO } from "./demo";
+import { EXAMPLES, scopeDemo } from "./examples";
 import { useKnowledge } from "./store";
 import { useProfiles } from "./profile-store";
-import type { Investigation, ProgressEvent, SourceEngine } from "./types";
+import type { ProgressEvent, SourceEngine } from "./types";
 
 export const STAGES = [
   "Understanding query",
@@ -16,23 +17,24 @@ export const STAGES = [
   "Building evidence graph",
   "Following the evidence",
 ];
-
 export function useSearch() {
   const controller = useRef<AbortController | null>(null);
   const cancel = () => {
     controller.current?.abort();
-    useKnowledge.getState().set({
-      searching: false,
-      error:
-        "Investigation cancelled. You can search again whenever you’re ready.",
-    });
+    useKnowledge
+      .getState()
+      .set({
+        searching: false,
+        error:
+          "Investigation cancelled. You can search again whenever you’re ready.",
+      });
   };
   const search = async (override?: string, sourceOverride?: SourceEngine[]) => {
-    const state = useKnowledge.getState();
-    const details = useProfiles.getState(),
+    const state = useKnowledge.getState(),
+      details = useProfiles.getState(),
       profile = details.profiles[state.mode];
-    const saveProfile = Boolean(profile && details.saveWithInvestigation);
-    const query = (override ?? state.query).trim();
+    const saveProfile = Boolean(profile && details.saveWithInvestigation),
+      query = (override ?? state.query).trim();
     if (!query) {
       document.getElementById("knowledge-search")?.focus();
       return;
@@ -56,14 +58,14 @@ export function useSearch() {
     try {
       if (state.demo) {
         for (const stage of STAGES.slice(0, 8)) {
-          if (abort.signal.aborted) return;
+          abort.signal.throwIfAborted();
           set({
             stages: { ...useKnowledge.getState().stages, [stage]: "running" },
           });
           await new Promise<void>((resolve, reject) => {
             const timer = setTimeout(
               resolve,
-              state.accessibility.reducedMotion ? 60 : 260,
+              state.accessibility.reducedMotion ? 60 : 180,
             );
             abort.signal.addEventListener(
               "abort",
@@ -78,75 +80,17 @@ export function useSearch() {
             stages: { ...useKnowledge.getState().stages, [stage]: "complete" },
           });
         }
-        const selectedSources = sourceOverride ?? state.sources;
-        let run: Investigation = { ...DEMO };
-        if (selectedSources.length) {
-          const evidence = DEMO.evidence.filter(
-            (e) => e.engine && selectedSources.includes(e.engine),
-          );
-          const ids = new Set(evidence.map((e) => e.id));
-          const entities = DEMO.entities
-            .map((entity) => {
-              const supportingIds = DEMO.relationships
-                .filter(
-                  (edge) =>
-                    (edge.source === entity.id || edge.target === entity.id) &&
-                    edge.evidenceIds.every((id) => ids.has(id)),
-                )
-                .flatMap((edge) => edge.evidenceIds);
-              return {
-                ...entity,
-                evidenceIds: [
-                  ...new Set([
-                    ...entity.evidenceIds.filter((id) => ids.has(id)),
-                    ...supportingIds,
-                  ]),
-                ],
-              };
-            })
-            .filter(
-              (entity) =>
-                entity.type === "topic" || entity.evidenceIds.length > 0,
-            );
-          const entityIds = new Set(entities.map((e) => e.id));
-          const claims = DEMO.claims.filter((c) =>
-            c.evidenceIds.every((id) => ids.has(id)),
-          );
-          run = {
-            ...DEMO,
-            evidence,
-            entities,
-            relationships: DEMO.relationships.filter(
-              (e) =>
-                entityIds.has(e.source) &&
-                entityIds.has(e.target) &&
-                e.evidenceIds.every((id) => ids.has(id)),
-            ),
-            claims,
-            sources: DEMO.sources.filter((s) =>
-              selectedSources.includes(s.source),
-            ),
-            summary: claims.length
-              ? claims
-                  .slice(0, 2)
-                  .map((c) => c.text)
-                  .join(" ")
-              : `${evidence.length} selected demo source records are available to explore. This source subset does not establish the research summary.`,
-            whyItMatters:
-              claims.find((c) => c.id === "impact")?.text ??
-              "Inspect the selected source records before drawing conclusions about this topic.",
-          };
-        }
+        const sample = EXAMPLES.find((e) => e.mode === state.mode)?.run ?? DEMO;
+        const run = scopeDemo(sample, sourceOverride ?? state.sources);
         set({
-          run,
-          ...(saveProfile ? { run: { ...run, profile } } : {}),
+          run: saveProfile ? { ...run, profile } : run,
           searching: false,
           hasSearched: true,
           sourceStatuses: run.sources,
           toast:
-            query !== DEMO.query
-              ? "Demo explores efficient AI inference. Switch to Live for your own question."
-              : "Your evidence universe is ready.",
+            query !== sample.query
+              ? "Showing a preloaded example. Choose Live to search your own question."
+              : "Your source records are ready.",
         });
         details.consumeConsent();
         return;
@@ -172,10 +116,10 @@ export function useSearch() {
       }
       if (!response.body)
         throw new Error("The evidence stream could not be opened.");
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let receivedResult = false;
+      const reader = response.body.getReader(),
+        decoder = new TextDecoder();
+      let buffer = "",
+        receivedResult = false;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -213,7 +157,7 @@ export function useSearch() {
               hasSearched: true,
               error: null,
               toast: event.result.evidence.length
-                ? "Your evidence universe is ready."
+                ? "Your source records are ready."
                 : "No evidence found. Try a more specific question.",
             });
           }

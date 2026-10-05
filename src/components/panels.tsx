@@ -328,7 +328,7 @@ export function EntityPanel({
             )}
             {node.type === "topic" && (
               <div className="why-panel">
-                <span className="eyebrow">WHY THIS MATTERS</span>
+                <span className="eyebrow">Context</span>
                 <p>{s.run.whyItMatters}</p>
                 <button
                   className="text-button"
@@ -412,7 +412,7 @@ export function EntityPanel({
                 </button>
                 {questions.length > 0 && (
                   <div className="topic-questions">
-                    <span className="eyebrow">RELATED QUESTIONS</span>
+                    <span className="eyebrow">Related questions</span>
                     {questions.slice(0, 8).map((question, i) => (
                       <button
                         key={`${question.question}-${i}`}
@@ -474,7 +474,9 @@ export function EntityPanel({
             {Array.isArray(details?.nonPatentCitations) &&
               details.nonPatentCitations.length > 0 && (
                 <div className="patent-citation-list">
-                  <span className="eyebrow">RESEARCH → PATENT REFERENCES</span>
+                  <span className="eyebrow">
+                    Research and patent references
+                  </span>
                   {(details.nonPatentCitations as { title?: string }[])
                     .slice(0, 8)
                     .map((citation, i) => (
@@ -690,7 +692,7 @@ function TrendsSparkline({
     .join(" ");
   return (
     <div className="trends-sparkline">
-      <span className="eyebrow">GOOGLE SEARCH INTEREST</span>
+      <span className="eyebrow">Google search interest</span>
       <svg
         viewBox="0 0 290 105"
         role="img"
@@ -749,7 +751,7 @@ export function EvidenceDrawer() {
         <div className="drawer-heading">
           <div>
             <span className="eyebrow">
-              <ShieldCheck size={13} /> THE EVIDENCE TRAIL
+              <ShieldCheck size={16} /> Evidence trail
             </span>
             <h2 id="evidence-drawer-title">Why do we believe this?</h2>
           </div>
@@ -763,8 +765,8 @@ export function EvidenceDrawer() {
         </div>
         <div className="drawer-data-label">
           {s.run.demo
-            ? "DEMO DATA · CURATED HISTORICAL SOURCES"
-            : "LIVE · RETRIEVED SOURCE RECORDS"}
+            ? "Demo data · Curated historical sources"
+            : "Live · Retrieved source records"}
         </div>
         <div className="claim-quote">
           <span className="eyebrow">{claim ? "CLAIM" : "ENTITY"}</span>
@@ -776,7 +778,7 @@ export function EvidenceDrawer() {
         </div>
         {claim?.supportingQuotes?.length && (
           <div className="exact-quotes">
-            <span className="eyebrow">VERBATIM SOURCE EXCERPTS</span>
+            <span className="eyebrow">Verbatim source excerpts</span>
             {claim.supportingQuotes.map((quote, i) => (
               <blockquote key={i}>
                 <p>“{quote.text}”</p>
@@ -798,7 +800,7 @@ export function EvidenceDrawer() {
                 <span style={{ color: CATEGORIES[item.type].color }}>
                   {CATEGORIES[item.type].label}
                 </span>
-                <span>{item.primary ? "PRIMARY SOURCE" : "SOURCE RECORD"}</span>
+                <span>{item.primary ? "Primary source" : "Source record"}</span>
               </div>
               <h4>{item.title}</h4>
               <p>

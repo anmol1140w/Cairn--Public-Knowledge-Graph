@@ -91,13 +91,24 @@ export function ModeInsights({
           Number(/review|survey/i.test(a.title)) ||
         (a.date ?? "9999").localeCompare(b.date ?? "9999"),
     );
-    const definitions = items.flatMap((e) =>
-      [
-        ...(e.snippet ?? "").matchAll(
-          /([A-Za-z][A-Za-z -]{2,40}) (?:is defined as|refers to|means) ([^.]+\.)/g,
-        ),
-      ].map((match) => ({ term: match[1], quote: match[0], id: e.id })),
-    );
+    const definitions = [
+      ...items.flatMap((e) =>
+        Array.isArray(e.metadata?.glossary)
+          ? (e.metadata.glossary as { term: string; quote: string }[])
+              .filter((definition) =>
+                (e.snippet ?? "").includes(definition.quote),
+              )
+              .map((definition) => ({ ...definition, id: e.id }))
+          : [],
+      ),
+      ...items.flatMap((e) =>
+        [
+          ...(e.snippet ?? "").matchAll(
+            /([A-Za-z][A-Za-z -]{2,40}) (?:is defined as|refers to|means) ([^.]+\.)/g,
+          ),
+        ].map((match) => ({ term: match[1], quote: match[0], id: e.id })),
+      ),
+    ];
     return (
       <section className="mode-insights" aria-label="Reading guide">
         <h3>Reading order</h3>

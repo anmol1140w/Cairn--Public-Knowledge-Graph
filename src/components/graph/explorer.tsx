@@ -44,7 +44,11 @@ const subscribe = (callback: () => void) => {
   media.addEventListener("change", callback);
   return () => media.removeEventListener("change", callback);
 };
-const subscribeMotion = (callback: () => void) => { const media = window.matchMedia("(prefers-reduced-motion: reduce)"); media.addEventListener("change", callback); return () => media.removeEventListener("change", callback); };
+const subscribeMotion = (callback: () => void) => {
+  const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+};
 class CanvasBoundary extends Component<
   { children: ReactNode; fallback: ReactNode },
   { failed: boolean }
@@ -61,9 +65,13 @@ export function Explorer() {
   const s = useKnowledge();
   const viewer = useExplorer();
   const stage = useRef<HTMLDivElement>(null);
-  const layoutCache = useMemo(() => ({ investigationId: s.run.id, positions: new Map<string, Point>() }), [s.run.id]);
+  const layoutCache = useMemo(
+    () => ({ investigationId: s.run.id, positions: new Map<string, Point>() }),
+    [s.run.id],
+  );
   const layout = useMemo(
-    () => layoutGraph(s.run.entities, s.run.relationships, layoutCache.positions),
+    () =>
+      layoutGraph(s.run.entities, s.run.relationships, layoutCache.positions),
     [s.run.entities, s.run.relationships, layoutCache],
   );
   const [limit, setLimit] = useState(1000);
@@ -72,7 +80,11 @@ export function Explorer() {
     () => window.matchMedia("(min-width: 800px)").matches,
     () => false,
   );
-  const reducedOS = useSyncExternalStore(subscribeMotion, () => window.matchMedia("(prefers-reduced-motion: reduce)").matches, () => false);
+  const reducedOS = useSyncExternalStore(
+    subscribeMotion,
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false,
+  );
   const nodes = useMemo(
     () =>
       visibleEntities(
@@ -161,7 +173,37 @@ export function Explorer() {
       overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     stage.current?.focus({ preventScroll: true });
+    const container = stage.current?.closest(".explorer");
+    const trap = (event: KeyboardEvent) => {
+      if (
+        event.key !== "Tab" ||
+        !container ||
+        useKnowledge.getState().modal ||
+        useKnowledge.getState().evidenceClaim
+      )
+        return;
+      const elements = [
+        ...container.querySelectorAll<HTMLElement>(
+          'button:not([disabled]):not([tabindex="-1"]), select, input, [tabindex="0"]',
+        ),
+      ].filter(
+        (el) =>
+          el.getClientRects().length &&
+          getComputedStyle(el).visibility !== "hidden",
+      );
+      const first = elements[0],
+        last = elements.at(-1);
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener("keydown", trap);
     return () => {
+      document.removeEventListener("keydown", trap);
       document.body.style.overflow = overflow;
       window.scrollTo({ top: y, behavior: "instant" });
     };
@@ -178,17 +220,21 @@ export function Explorer() {
     <section
       className={`explorer explorer-${viewer.preset} ${viewer.fullscreen ? "explorer-fullscreen" : ""}`}
       aria-label="Explorer"
+      role={viewer.fullscreen ? "dialog" : undefined}
+      aria-modal={viewer.fullscreen ? true : undefined}
     >
       <div className="explorer-heading">
         <h2>Explorer</h2>
         <span className="muted">
-          {nodes.length} entities · {edges.length} connections
+          {renderedNodes.length} of {nodes.length} entities · {edges.length}{" "}
+          connections
         </span>
       </div>
       <div
         ref={stage}
         className={`scene-stage ${viewer.active ? "viewer-active" : ""}`}
         aria-label="Knowledge graph"
+        role="group"
         tabIndex={0}
         onPointerEnter={() => viewer.set({ hovering: true })}
         onPointerLeave={() => {
@@ -327,8 +373,12 @@ export function Explorer() {
           <button
             className="view-button"
             aria-label="Auto-rotate"
-            aria-pressed={viewer.autoRotate && !s.accessibility.reducedMotion && !reducedOS}
-            disabled={s.accessibility.reducedMotion || reducedOS || !desktop || isList}
+            aria-pressed={
+              viewer.autoRotate && !s.accessibility.reducedMotion && !reducedOS
+            }
+            disabled={
+              s.accessibility.reducedMotion || reducedOS || !desktop || isList
+            }
             onClick={() => viewer.set({ autoRotate: !viewer.autoRotate })}
           >
             {viewer.autoRotate ? <Pause size={18} /> : <Play size={18} />}Rotate

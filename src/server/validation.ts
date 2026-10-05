@@ -116,7 +116,7 @@ export const investigationSchema = z.object({
   id: z.string().max(200),
   query: z.string().max(600),
   demo: z.boolean(),
-  evidence: z.array(evidenceSchema).max(200),
+  evidence: z.array(evidenceSchema).max(2000),
   entities: z
     .array(
       z.object({
@@ -130,8 +130,8 @@ export const investigationSchema = z.object({
         metadata: z.record(z.string(), z.unknown()).optional(),
       }),
     )
-    .max(300),
-  relationships: z.array(relationshipSchema).max(1000),
+    .max(10000),
+  relationships: z.array(relationshipSchema).max(30000),
   claims: z.array(claimSchema).max(50),
   summary: z.string().max(20000),
   whyItMatters: z.string().max(10000),

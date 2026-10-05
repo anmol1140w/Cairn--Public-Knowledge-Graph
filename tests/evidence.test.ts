@@ -205,7 +205,7 @@ describe("provenance validation", () => {
     supportingQuotes: [
       {
         evidenceId: item.id,
-        text: "reduces reads and writes between GPU high-bandwidth memory",
+        text: "reduce the number of memory reads/writes between GPU high bandwidth memory (HBM) and GPU on-chip SRAM",
       },
     ],
   };

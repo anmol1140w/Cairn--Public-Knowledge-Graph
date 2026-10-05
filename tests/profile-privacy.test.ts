@@ -20,6 +20,70 @@ vi.mock("@/server/storage", () => ({
 }));
 import { POST } from "@/app/api/search/route";
 describe("profile persistence boundary", () => {
+  it("does not let a profile expand the baseline source families", async () => {
+    mocks.model.mockResolvedValueOnce({
+      intent: "test",
+      searches: ["jobs", "news", "scholar", "patents", "web"].map((source) => ({
+        source,
+        query: "fixture",
+        reason: "model suggestion",
+      })),
+      complex: false,
+      deep: false,
+    });
+    const response = await POST(
+      new NextRequest("http://localhost/api/search", {
+        method: "POST",
+        headers: { Host: "localhost", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: "research work",
+          mode: "jobs",
+          profile: { mode: "jobs", roles: ["Research assistant"] },
+        }),
+      }),
+    );
+    expect(await response.text()).toContain('"kind":"result"');
+    expect(mocks.search).toHaveBeenCalledTimes(1);
+    expect(mocks.search.mock.calls[0][0].engine).toBe("google_jobs");
+  });
+  it("checks the pasted news claim and applies the requested plain-language prompt", async () => {
+    mocks.search.mockResolvedValueOnce({
+      payload: {
+        news_results: [
+          {
+            title: "A fixture announcement",
+            source: { name: "Fixture press" },
+            link: "https://example.org/announcement",
+            snippet: "A fixture announcement is available.",
+          },
+        ],
+      },
+      retrievedAt: "2026-10-06T00:00:00Z",
+      cached: false,
+    });
+    const response = await POST(
+      new NextRequest("http://localhost/api/search", {
+        method: "POST",
+        headers: { Host: "localhost", "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: "technology",
+          mode: "news",
+          profile: {
+            mode: "news",
+            claim: "The specific pasted claim",
+            readingLevel: "Simple",
+          },
+        }),
+      }),
+    );
+    expect(await response.text()).toContain('"kind":"result"');
+    const synthesis = mocks.model.mock.calls.find((call) => call[5] === 4200)!;
+    expect(JSON.parse(synthesis[2]).question).toContain(
+      "The specific pasted claim",
+    );
+    expect(synthesis[1]).toContain("Use plain language and short sentences.");
+    expect(mocks.search).toHaveBeenCalledTimes(1);
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("SERPAPI_API_KEY", "unit-test-key");

@@ -1,76 +1,119 @@
-// Inspect the real saved live graph without making search/model requests.
+// Reproducible screenshots of preloaded data. No search/model/database requests.
 import { chromium } from "playwright";
-import pg from "pg";
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-const result = await pool.query(
-  "SELECT id,session_id FROM search_runs WHERE status='complete' AND investigation IS NOT NULL ORDER BY created_at DESC LIMIT 1",
+import { spawn } from "node:child_process";
+import { setTimeout as delay } from "node:timers/promises";
+const url = "http://127.0.0.1:3101";
+const server = spawn(
+  process.execPath,
+  [
+    "node_modules/next/dist/bin/next",
+    "dev",
+    "--hostname",
+    "127.0.0.1",
+    "--port",
+    "3101",
+  ],
+  { env: { ...process.env, CAIRN_TEST: "1" }, stdio: "ignore" },
 );
-await pool.end();
-const browser = await chromium.launch({
-  args: ["--enable-unsafe-swiftshader"],
-});
+let browser;
 try {
-  const context = await browser.newContext({
-    viewport: { width: 1440, height: 1050 },
-  });
-  if (result.rows[0])
-    await context.addCookies([
-      {
-        name: "pkg-session",
-        value: result.rows[0].session_id,
-        domain: "localhost",
-        path: "/",
-        httpOnly: true,
-        sameSite: "Strict",
-      },
-    ]);
-  const page = await context.newPage();
-  const errors = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("http://localhost:3000");
-  await page
-    .locator(".projected-node-label")
-    .first()
-    .waitFor({ state: "visible" });
-  await page.waitForFunction(() =>
-    Array.from(document.querySelectorAll(".result-row")).every(
-      (el) => getComputedStyle(el).opacity === "1",
-    ),
-  );
-  await page.screenshot({
-    path: "artifacts/universe-desktop.png",
-    fullPage: true,
-  });
-  if (result.rows[0]) {
-    await page.keyboard.press("Control+k");
-    await page
-      .getByRole("textbox", { name: "Search commands" })
-      .fill("recent investigations");
-    await page.keyboard.press("Enter");
-    await page.locator(".history-list button").first().click();
-    await page
-      .locator(".graph-corner-label")
-      .filter({ hasText: "LIVE EVIDENCE" })
-      .waitFor();
-    await page.screenshot({
-      path: "artifacts/universe-live.png",
-      fullPage: false,
-    });
-    await page.locator(".claim-row").first().click();
-    await page
-      .getByRole("dialog", { name: "Why do we believe this?" })
-      .waitFor();
-    await page.waitForFunction(() => {
-      const el = document.querySelector(".evidence-drawer");
-      return el && el.getBoundingClientRect().right <= window.innerWidth + 1;
-    });
-    await page.screenshot({
-      path: "artifacts/live-evidence.png",
-      fullPage: false,
-    });
+  let ready = false;
+  for (let i = 0; i < 120; i++) {
+    if (server.exitCode !== null)
+      throw new Error("Screenshot server failed to start on port 3101.");
+    if (
+      await fetch(url)
+        .then((r) => r.ok)
+        .catch(() => false)
+    ) {
+      ready = true;
+      break;
+    }
+    await delay(1000);
   }
-  if (errors.length) throw new Error(errors.join("\n"));
-  console.info("Visual snapshots captured; no search or model requests made.");
+  if (!ready) throw new Error("Screenshot server did not become ready.");
+  browser = await chromium.launch({ args: ["--enable-unsafe-swiftshader"] });
+  const posts = [],
+    errors = [];
+  for (const width of [1440, 390]) {
+    const context = await browser.newContext({
+      viewport: { width, height: width === 1440 ? 1050 : 844 },
+      reducedMotion: "reduce",
+    });
+    const page = await context.newPage();
+    await page.route("**/api/status", (route) =>
+      route.fulfill({ json: { searchConfigured: false } }),
+    );
+    page.on("request", (r) => {
+      if (r.method() === "POST") posts.push(r.url());
+    });
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(url);
+    await page.addStyleTag({ content: "nextjs-portal{display:none}" });
+    await page
+      .getByRole("button", { name: "Dismiss display preferences introduction" })
+      .click();
+    await page.locator(".node-label:visible").first().waitFor();
+    await page.waitForFunction(() =>
+      [...document.querySelectorAll(".result-row")].every(
+        (e) => getComputedStyle(e).opacity === "1",
+      ),
+    );
+    await page.screenshot({
+      path: `docs/screenshots/cairn-${width}-light.png`,
+      fullPage: true,
+    });
+    if (width === 1440) {
+      await page.getByRole("button", { name: "Use dark theme" }).click();
+      await page.waitForFunction(
+        () =>
+          getComputedStyle(document.querySelector(".brand")).color ===
+          "rgb(241, 244, 242)",
+      );
+      await page.screenshot({
+        path: "docs/screenshots/cairn-1440-dark.png",
+        fullPage: true,
+      });
+      await page.getByRole("button", { name: "Use light theme" }).click();
+      await page.locator(".claim-row").first().click();
+      await page
+        .getByRole("dialog", { name: "Why do we believe this?" })
+        .waitFor();
+      await page.waitForFunction(
+        () =>
+          document.querySelector(".evidence-drawer").getBoundingClientRect()
+            .right <=
+          innerWidth + 1,
+      );
+      await page.screenshot({ path: "docs/screenshots/cairn-evidence.png" });
+    } else {
+      await page
+        .locator(".main-nav")
+        .getByRole("button", { name: "Jobs", exact: true })
+        .click();
+      await page
+        .locator(".workspace-sidebar")
+        .getByRole("button", { name: "Add your details" })
+        .click();
+      await page
+        .getByRole("dialog", { name: "Your job preferences" })
+        .waitFor();
+      await page.waitForFunction(
+        () =>
+          getComputedStyle(document.querySelector(".modal")).opacity === "1",
+      );
+      await page.screenshot({ path: "docs/screenshots/cairn-390-profile.png" });
+    }
+    await context.close();
+  }
+  if (posts.length || errors.length)
+    throw new Error(
+      `Screenshot checks failed: ${posts.length} unexpected POST requests; ${errors.join("; ")}`,
+    );
+  console.info(
+    "Captured light/dark 1440px, light/profile 390px and evidence screenshots. Zero search/model requests.",
+  );
 } finally {
-  await browser.close();
+  await browser?.close();
+  server.kill("SIGTERM");
 }

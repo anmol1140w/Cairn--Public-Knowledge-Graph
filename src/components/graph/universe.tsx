@@ -26,7 +26,7 @@ import {
 type Props = { nodes: GraphEntity[]; edges: Relationship[] };
 function configureRotation(control: OrbitControlsType, enabled: boolean) {
   control.autoRotate = enabled;
-  control.autoRotateSpeed = .8;
+  control.autoRotateSpeed = 0.8;
 }
 
 function CameraDirector({
@@ -44,6 +44,7 @@ function CameraDirector({
     width: 0,
     height: 0,
     reset: -1,
+    sequence: -1,
   });
   const baseDistance = useRef(16);
   const animation = useRef<{
@@ -63,7 +64,19 @@ function CameraDirector({
       previous.current.width !== size.width ||
       previous.current.height !== size.height ||
       previous.current.reset !== reset;
-    previous.current = { nodes, width: size.width, height: size.height, reset };
+    const resizeOnly =
+      previous.current.nodes === nodes &&
+      previous.current.reset === reset &&
+      (previous.current.width !== size.width ||
+        previous.current.height !== size.height);
+    const commandChanged = previous.current.sequence !== command.sequence;
+    previous.current = {
+      nodes,
+      width: size.width,
+      height: size.height,
+      reset,
+      sequence: command.sequence,
+    };
     const target = control.target.clone(),
       offset = camera.position.clone().sub(target);
     let destination: Vector3;
@@ -74,9 +87,15 @@ function CameraDirector({
         Math.atan((Math.tan(half) * size.width) / Math.max(1, size.height)),
       );
       baseDistance.current = ((bounds.radius + 0.4) / Math.sin(angle)) * 1.25;
-      target.set(...bounds.center);
+      if (
+        !resizeOnly ||
+        (commandChanged && ["fit", "reset"].includes(command.kind))
+      )
+        target.set(...bounds.center);
       const direction =
-        command.kind === "reset" ? new Vector3(0, 0, 1) : offset.normalize();
+        command.kind === "reset" && commandChanged
+          ? new Vector3(0, 0, 1)
+          : offset.normalize();
       destination = target
         .clone()
         .add(direction.multiplyScalar(baseDistance.current / v.zoom));
@@ -127,17 +146,22 @@ function CameraDirector({
     const reduced =
       s.accessibility.reducedMotion ||
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    configureRotation(control,
+    configureRotation(
+      control,
       v.autoRotate &&
-      !reduced &&
-      !v.hovering &&
-      !v.dragging &&
-      !s.hovered &&
-      !s.selected &&
-      Date.now() - v.lastInteraction > 4000 &&
-      !animation.current);
-    const container = gl.domElement.closest(".three-universe") as HTMLElement | null;
-    if (container) container.dataset.rotation = control.autoRotate ? "running" : "paused";
+        !reduced &&
+        !v.hovering &&
+        !v.dragging &&
+        !s.hovered &&
+        !s.selected &&
+        Date.now() - v.lastInteraction > 4000 &&
+        !animation.current,
+    );
+    const container = gl.domElement.closest(
+      ".three-universe",
+    ) as HTMLElement | null;
+    if (container)
+      container.dataset.rotation = control.autoRotate ? "running" : "paused";
     const a = animation.current;
     if (a) {
       a.elapsed += delta;
@@ -156,6 +180,11 @@ function CameraDirector({
       }
     }
     if (a || !control.enabled) control.update();
+    if (container)
+      container.dataset.cameraTarget = control.target
+        .toArray()
+        .map((n) => n.toFixed(3))
+        .join(",");
   });
   return null;
 }
@@ -268,9 +297,11 @@ function Node({ node, accent }: { node: GraphEntity; accent: string }) {
   const destination = useMemo(() => new Vector3(...node.position), [node]);
   useFrame((_, delta) => {
     if (!mesh.current || elapsed.current >= 1) return;
-    elapsed.current = s.accessibility.reducedMotion || window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? 1
-      : Math.min(1, elapsed.current + delta / 0.2);
+    elapsed.current =
+      s.accessibility.reducedMotion ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? 1
+        : Math.min(1, elapsed.current + delta / 0.2);
     mesh.current.position.lerpVectors(origin, destination, elapsed.current);
     mesh.current.scale.setScalar(nodeRadius(node) * elapsed.current);
   });
@@ -325,16 +356,21 @@ function InstancedNodes({
   const mesh = useRef<InstancedMesh>(null),
     elapsed = useRef(0),
     dummy = useMemo(() => new Object3D(), []);
-  const seen = useRef(new Set<string>()), newIds = useRef(new Set<string>());
+  const seen = useRef(new Set<string>()),
+    newIds = useRef(new Set<string>());
   const s = useKnowledge();
   useLayoutEffect(() => {
     elapsed.current = 0;
     if (!mesh.current) return;
-    newIds.current = new Set(nodes.filter((node) => !seen.current.has(node.id)).map((node) => node.id));
+    newIds.current = new Set(
+      nodes.filter((node) => !seen.current.has(node.id)).map((node) => node.id),
+    );
     seen.current = new Set(nodes.map((node) => node.id));
     nodes.forEach((node, index) => {
       dummy.position.set(...node.position);
-      dummy.scale.setScalar(newIds.current.has(node.id) ? .001 : nodeRadius(node));
+      dummy.scale.setScalar(
+        newIds.current.has(node.id) ? 0.001 : nodeRadius(node),
+      );
       dummy.updateMatrix();
       mesh.current!.setMatrixAt(index, dummy.matrix);
       mesh.current!.setColorAt(
@@ -353,17 +389,22 @@ function InstancedNodes({
   }, [nodes, accent, dummy, s.highlighted]);
   useFrame((_, delta) => {
     if (!mesh.current || elapsed.current >= 1) return;
-    elapsed.current = s.accessibility.reducedMotion || window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? 1
-      : Math.min(1, elapsed.current + delta / 0.2);
+    elapsed.current =
+      s.accessibility.reducedMotion ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? 1
+        : Math.min(1, elapsed.current + delta / 0.2);
     nodes.forEach((node, index) => {
-      const start = !newIds.current.has(node.id) ? node.position :
-        (node.metadata?.__entry as [number, number, number] | undefined) ??
-        node.position;
+      const start = !newIds.current.has(node.id)
+        ? node.position
+        : ((node.metadata?.__entry as [number, number, number] | undefined) ??
+          node.position);
       dummy.position
         .set(...start)
         .lerp(new Vector3(...node.position), elapsed.current);
-      dummy.scale.setScalar(nodeRadius(node) * (newIds.current.has(node.id) ? elapsed.current : 1));
+      dummy.scale.setScalar(
+        nodeRadius(node) * (newIds.current.has(node.id) ? elapsed.current : 1),
+      );
       dummy.updateMatrix();
       mesh.current!.setMatrixAt(index, dummy.matrix);
     });
@@ -442,6 +483,21 @@ function Scene({
           const v = useExplorer.getState();
           v.set({ dragging: false });
           v.interact();
+          if (controls.current)
+            v.set({
+              camera: {
+                position: controls.current.object.position.toArray() as [
+                  number,
+                  number,
+                  number,
+                ],
+                target: controls.current.target.toArray() as [
+                  number,
+                  number,
+                  number,
+                ],
+              },
+            });
         }}
         makeDefault
       />

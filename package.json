@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "screenshots": "node scripts/capture.mjs",
     "test:live": "node scripts/live-smoke.mjs",
     "verify:secrets": "node --env-file=.env.local scripts/check-secrets.mjs",
     "db:up": "docker compose --env-file .env.local up -d",
@@ -41,6 +42,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.20.5",

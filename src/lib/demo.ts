@@ -24,13 +24,22 @@ const evidence: Evidence[] = [
       "Christopher Ré",
     ],
     snippet:
-      "An IO-aware exact attention algorithm that reduces reads and writes between GPU high-bandwidth memory and on-chip SRAM.",
+      "We argue that a missing principle is making attention algorithms IO-aware -- accounting for reads and writes between levels of GPU memory. We propose FlashAttention, an IO-aware exact attention algorithm that uses tiling to reduce the number of memory reads/writes between GPU high bandwidth memory (HBM) and GPU on-chip SRAM.",
     relevanceScore: 0.96,
     engine: "scholar",
     primary: true,
     metadata: {
       cluster: "Attention & memory",
       year: 2022,
+      openAccess: true,
+      excerptVerifiedAt: "2026-10-06",
+      glossary: [
+        {
+          term: "IO-aware",
+          quote:
+            "We argue that a missing principle is making attention algorithms IO-aware -- accounting for reads and writes between levels of GPU memory.",
+        },
+      ],
       skills: ["CUDA", "PyTorch"],
     },
   },
@@ -44,11 +53,16 @@ const evidence: Evidence[] = [
     date: "2023-07-17",
     authors: ["Tri Dao"],
     snippet:
-      "Improves parallelism and work partitioning to make exact attention faster and use GPU resources more effectively.",
+      "The attention layer is the main bottleneck in scaling to longer sequences, as its runtime and memory increase quadratically in the sequence length.",
     relevanceScore: 0.95,
     engine: "scholar",
     primary: true,
-    metadata: { cluster: "Attention & memory", year: 2023 },
+    metadata: {
+      cluster: "Attention & memory",
+      year: 2023,
+      openAccess: true,
+      excerptVerifiedAt: "2026-10-06",
+    },
   },
   {
     id: "paged",
@@ -70,11 +84,17 @@ const evidence: Evidence[] = [
       "Ion Stoica",
     ],
     snippet:
-      "PagedAttention manages attention key-value memory in non-contiguous blocks. The paper introduces vLLM, a serving system built around this approach.",
+      "To address this problem, we propose PagedAttention, an attention algorithm inspired by the classical virtual memory and paging techniques in operating systems. On top of it, we build vLLM, an LLM serving system that achieves (1) near-zero waste in KV cache memory and (2) flexible sharing of KV cache within and across requests to further reduce memory usage.",
     relevanceScore: 0.98,
     engine: "scholar",
     primary: true,
-    metadata: { cluster: "LLM serving", year: 2023, technology: "vLLM" },
+    metadata: {
+      cluster: "LLM serving",
+      year: 2023,
+      technology: "vLLM",
+      openAccess: true,
+      excerptVerifiedAt: "2026-10-06",
+    },
   },
   {
     id: "awq",
@@ -97,11 +117,17 @@ const evidence: Evidence[] = [
       "Song Han",
     ],
     snippet:
-      "An activation-aware approach to low-bit weight quantization, with a hardware-friendly implementation for efficient language-model inference.",
+      "We propose Activation-aware Weight Quantization (AWQ), a hardware-friendly approach for LLM low-bit weight-only quantization.",
     relevanceScore: 0.94,
     engine: "scholar",
     primary: true,
-    metadata: { cluster: "Quantization", year: 2023 },
+    metadata: {
+      cluster: "Quantization",
+      year: 2023,
+      openAccess: true,
+      excerptVerifiedAt: "2026-10-06",
+      excerptVersion: "v6",
+    },
   },
   {
     id: "tri",
@@ -179,11 +205,11 @@ const evidence: Evidence[] = [
     type: "news",
     title: "NVIDIA Blackwell Platform Arrives to Power a New Era of Computing",
     source: "NVIDIA Newsroom",
-    url: "https://nvidianews.nvidia.com/news/blackwell-ai-computing-platform",
+    url: "https://nvidianews.nvidia.com/news/nvidia-blackwell-platform-arrives-to-power-a-new-era-of-computing",
     date: "2024-03-18",
     authors: ["NVIDIA"],
     snippet:
-      "NVIDIA announced the Blackwell platform for accelerated computing, including generative AI workloads. This is a company announcement, not independent reporting.",
+      "GTC—Powering a new era of computing, NVIDIA today announced that the NVIDIA Blackwell platform has arrived — enabling organizations everywhere to build and run real-time generative AI on trillion-parameter large language models at up to 25x less cost and energy consumption than its predecessor.",
     relevanceScore: 0.83,
     engine: "news",
     primary: true,
@@ -191,21 +217,27 @@ const evidence: Evidence[] = [
       event: "Blackwell announcement",
       stance: "context",
       year: 2024,
+      excerptVerifiedAt: "2026-10-06",
     },
   },
   {
     id: "vllm-news",
     type: "news",
     title: "vLLM: Easy, Fast, and Cheap LLM Serving with PagedAttention",
-    source: "Berkeley AI Research",
-    url: "https://bair.berkeley.edu/blog/2023/06/20/vllm/",
+    source: "vLLM project team · UC Berkeley",
+    url: "https://blog.vllm.ai/2023/06/20/vllm.html",
     date: "2023-06-20",
     snippet:
-      "The project team introduces vLLM and explains the memory-management challenge behind PagedAttention.",
+      "Today we are excited to introduce vLLM, an open-source library for fast LLM inference and serving. vLLM utilizes PagedAttention, our new attention algorithm that effectively manages attention keys and values.",
     relevanceScore: 0.95,
     engine: "news",
     primary: true,
-    metadata: { event: "vLLM introduction", stance: "supports", year: 2023 },
+    metadata: {
+      event: "vLLM introduction",
+      stance: "supports",
+      year: 2023,
+      excerptVerifiedAt: "2026-10-06",
+    },
   },
   {
     id: "hardware-patent",
@@ -236,7 +268,7 @@ const evidence: Evidence[] = [
     source: "Illustrative opportunity · NVIDIA careers",
     url: "https://www.nvidia.com/en-us/about-nvidia/careers/",
     snippet:
-      "An illustrative opportunity to demonstrate the radar. Visit the employer’s careers page to check actual vacancies and requirements.",
+      "An illustrative career example. Visit the employer’s careers page to check actual vacancies and requirements.",
     relevanceScore: 0.9,
     engine: "jobs",
     metadata: {
@@ -306,7 +338,7 @@ const entities: GraphEntity[] = [
     type: "topic",
     title: "Efficient AI inference",
     label: "Efficient AI inference",
-    subtitle: "A universe of connected ideas",
+    subtitle: "Research and source records",
     position: positions.topic,
     evidenceIds: ["flash", "flash2", "paged", "awq"],
   },
@@ -383,7 +415,7 @@ export const DEMO: Investigation = {
   entities,
   relationships,
   summary:
-    "Less memory. Better serving. More accessible AI. Explore how attention algorithms, memory management, and quantization connect the research to practical AI infrastructure.",
+    "These source records describe attention-memory algorithms, language-model serving and weight quantization. Their excerpts establish what the authors propose; they do not independently validate performance or current hiring status.",
   whyItMatters:
     "These papers address different inference bottlenecks: attention IO, KV-cache management, and model weight storage. Understanding those differences helps you choose what to learn or investigate next.",
   claims: [
@@ -391,6 +423,10 @@ export const DEMO: Investigation = {
       id: "memory",
       text: "Memory efficiency is a recurring theme in attention algorithms and language-model serving.",
       evidenceIds: ["flash", "flash2", "paged"],
+      supportingQuotes: ["flash", "flash2", "paged"].map((id) => ({
+        evidenceId: id,
+        text: evidence.find((e) => e.id === id)!.snippet!,
+      })),
       conflictingEvidenceIds: [],
       confidence: "high",
       rationale:
@@ -400,6 +436,12 @@ export const DEMO: Investigation = {
       id: "quantization",
       text: "Activation-aware weight quantization is another route to reducing the resources needed for LLM inference.",
       evidenceIds: ["awq"],
+      supportingQuotes: [
+        {
+          evidenceId: "awq",
+          text: evidence.find((e) => e.id === "awq")!.snippet!,
+        },
+      ],
       conflictingEvidenceIds: [],
       confidence: "medium",
       rationale:
@@ -409,6 +451,10 @@ export const DEMO: Investigation = {
       id: "serving",
       text: "PagedAttention’s memory-management approach underpins the vLLM serving system introduced by its authors.",
       evidenceIds: ["paged", "vllm-news"],
+      supportingQuotes: ["paged", "vllm-news"].map((id) => ({
+        evidenceId: id,
+        text: evidence.find((e) => e.id === id)!.snippet!,
+      })),
       conflictingEvidenceIds: [],
       confidence: "medium",
       rationale:
@@ -418,10 +464,29 @@ export const DEMO: Investigation = {
       id: "impact",
       text: "These papers address different inference bottlenecks: attention IO, KV-cache management, and model weight storage. Understanding those differences helps you choose what to learn or investigate next.",
       evidenceIds: ["flash", "flash2", "paged", "awq"],
+      supportingQuotes: ["flash", "flash2", "paged", "awq"].map((id) => ({
+        evidenceId: id,
+        text: evidence.find((e) => e.id === id)!.snippet!,
+      })),
       conflictingEvidenceIds: [],
       confidence: "medium",
       rationale:
         "The bottlenecks are described in the original research papers. Their relevance to your next learning decision is an interpretation, not a demonstrated public-impact outcome.",
+    },
+    {
+      id: "blackwell-announcement",
+      text: "NVIDIA announced the Blackwell platform in its March 18, 2024 press release.",
+      evidenceIds: ["blackwell"],
+      conflictingEvidenceIds: [],
+      supportingQuotes: [
+        {
+          evidenceId: "blackwell",
+          text: evidence.find((e) => e.id === "blackwell")!.snippet!,
+        },
+      ],
+      confidence: "medium",
+      rationale:
+        "The company’s own dated announcement supports that an announcement occurred. Its performance and energy claims have not been independently verified in this sample.",
     },
   ],
   sources: ["scholar", "jobs", "news", "patents", "web"].map((source) => ({

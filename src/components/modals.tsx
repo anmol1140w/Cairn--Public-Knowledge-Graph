@@ -111,7 +111,7 @@ function AccessibilityModal() {
     {
       id: "reducedMotion",
       title: "Reduced motion",
-      description: "Calm transitions and a stationary universe.",
+      description: "Calm transitions and a stationary Explorer.",
     },
     {
       id: "screenReader",
@@ -289,7 +289,7 @@ function ExportModal() {
           <small>
             {s.run.evidence.length} source records ·{" "}
             {s.run.relationships.length} relationships ·{" "}
-            {s.run.demo ? "DEMO DATA" : "LIVE EVIDENCE"}
+            {s.run.demo ? "Demo data" : "Live evidence"}
           </small>
         </div>
       </div>
@@ -427,7 +427,7 @@ function CompareModal() {
       )}
       <div className="compare-table">
         <div className="compare-table-head">
-          <span>RETRIEVED CONNECTIONS</span>
+          <span>Retrieved connections</span>
           {nodes.map((node, i) => (
             <strong key={i}>{node?.label ?? "No entity"}</strong>
           ))}
@@ -661,7 +661,7 @@ function CommandsModal({
     },
     {
       title: "Find jobs",
-      detail: "Open opportunity radar",
+      detail: "Open Jobs and internships",
       icon: ArrowRight,
       key: "J",
       action: () => {
@@ -671,7 +671,7 @@ function CommandsModal({
     },
     {
       title: "Find papers",
-      detail: "Enter scholar space",
+      detail: "Open Scholar research papers",
       icon: GraduationCap,
       key: "S",
       action: () => {
@@ -837,14 +837,18 @@ function ShortcutsModal() {
   const shortcuts = [
     ["/", "Search knowledge"],
     ["⌘ / Ctrl K", "Command center"],
-    ["G", "Knowledge universe"],
-    ["N", "News lens"],
-    ["S", "Scholar space"],
-    ["J", "Opportunity radar"],
-    ["P", "Patent explorer"],
-    ["T", "Knowledge timeline"],
+    ["G", "Explore"],
+    ["N", "News"],
+    ["S", "Scholar"],
+    ["J", "Jobs"],
+    ["P", "Patents"],
+    ["T", "Evidence timeline"],
+    ["+ / −", "Zoom active viewer"],
+    ["0", "Fit active viewer"],
+    ["F", "Fullscreen active viewer"],
+    ["Arrow keys", "Pan active viewer"],
     ["?", "Keyboard shortcuts"],
-    ["Esc", "Close panels and dialogs"],
+    ["Esc", "Release viewer focus / close dialogs"],
   ];
   return (
     <ModalShell title="Explore without a mouse." eyebrow="KEYBOARD SHORTCUTS">

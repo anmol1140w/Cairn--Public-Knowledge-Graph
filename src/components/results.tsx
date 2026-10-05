@@ -207,13 +207,19 @@ function ResearchTimeline({ items }: { items: Evidence[] }) {
               <CartesianGrid stroke="var(--border)" vertical={false} />
               <XAxis
                 dataKey="year"
-                tick={{ fill: "var(--muted)", fontSize: 14 }}
+                tick={{
+                  fill: "var(--muted)",
+                  fontSize: s.accessibility.largeText ? 17.5 : 14,
+                }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 allowDecimals={false}
-                tick={{ fill: "var(--muted)", fontSize: 14 }}
+                tick={{
+                  fill: "var(--muted)",
+                  fontSize: s.accessibility.largeText ? 17.5 : 14,
+                }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -222,7 +228,7 @@ function ResearchTimeline({ items }: { items: Evidence[] }) {
                   background: "var(--surface)",
                   border: "1px solid var(--border)",
                   color: "var(--foreground)",
-                  fontSize: 14,
+                  fontSize: s.accessibility.largeText ? 17.5 : 14,
                 }}
               />
               <Area
