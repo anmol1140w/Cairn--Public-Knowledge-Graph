@@ -23,7 +23,7 @@ import {
   Network,
   Search,
   ShieldCheck,
-  Sparkles,
+  BookOpen,
   TrendingUp,
 } from "lucide-react";
 import { useKnowledge } from "@/lib/store";
@@ -36,6 +36,7 @@ import {
 } from "@/lib/types";
 import { formatDate, relevantEvidence, skillMatch } from "@/lib/graph-utils";
 import { appendEvidence } from "@/lib/append-evidence";
+import { CONFIDENCE_LABELS, evidenceStrength } from "@/lib/confidence";
 
 export function EvidenceCard({
   evidence,
@@ -46,12 +47,13 @@ export function EvidenceCard({
 }) {
   const s = useKnowledge();
   const match = skillMatch(evidence, s.skills);
+  const confidence = evidenceStrength(s.run, evidence.id);
   return (
     <motion.article
       className="result-row"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.04, 0.3), duration: 0.3 }}
+      transition={{ duration: 0.2 }}
     >
       <div className="result-number">
         {(index + 1).toString().padStart(2, "0")}
@@ -78,6 +80,7 @@ export function EvidenceCard({
         <p>
           {evidence.snippet ?? "Open the original source for more context."}
         </p>
+        <p className="result-reason">{evidence.primary ? "Primary source record" : "Source record"} retrieved for this investigation.</p>
         <div className="result-meta">
           <span>{evidence.source}</span>
           <span>·</span>
@@ -117,15 +120,12 @@ export function EvidenceCard({
         </div>
       </div>
       <div className="result-relevance">
-        <span>{match ? "Skill overlap" : "Query relevance"}</span>
-        <strong>
-          {match ? match.score : Math.round(evidence.relevanceScore * 100)}
-          <small>%</small>
-        </strong>
+        <span>Evidence confidence</span>
+        <strong>{confidence.label}</strong>
         <div className="relevance-track">
           <span
             style={{
-              width: `${match?.score ?? evidence.relevanceScore * 100}%`,
+              width: `${confidence.width}%`,
               background: CATEGORIES[evidence.type].color,
             }}
           />
@@ -133,8 +133,12 @@ export function EvidenceCard({
         <small>
           {match
             ? `${match.matches.length} of ${match.matches.length + match.missing.length} listed skills`
-            : "Heuristic ranking"}
+            : "Claim support, not a truth score"}
         </small>
+        <details className="confidence-why">
+          <summary>Why?</summary>
+          <p>{confidence.reason}</p>
+        </details>
       </div>
     </motion.article>
   );
@@ -178,11 +182,11 @@ function ResearchTimeline({ items }: { items: Evidence[] }) {
             >
               <defs>
                 <linearGradient id="paperGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#7da9ff" stopOpacity={0.25} />
-                  <stop offset="100%" stopColor="#7da9ff" stopOpacity={0} />
+                  <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.2} />
+                  <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid stroke="#202534" vertical={false} />
+              <CartesianGrid stroke="var(--border)" vertical={false} />
               <XAxis
                 dataKey="year"
                 tick={{ fill: "var(--muted)", fontSize: 14 }}
@@ -197,23 +201,23 @@ function ResearchTimeline({ items }: { items: Evidence[] }) {
               />
               <Tooltip
                 contentStyle={{
-                  background: "#151a25",
-                  border: "1px solid #30394e",
-                  color: "#dce3f1",
-                  fontSize: 12,
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  color: "var(--foreground)",
+                  fontSize: 14,
                 }}
               />
               <Area
                 type="monotone"
                 dataKey="papers"
-                stroke="#7da9ff"
+                stroke="var(--accent)"
                 strokeWidth={2}
                 fill="url(#paperGradient)"
                 isAnimationActive={!s.accessibility.reducedMotion}
                 dot={{
                   r: 4,
-                  fill: "#a4c1ff",
-                  stroke: "#293f67",
+                  fill: "var(--accent)",
+                  stroke: "var(--surface)",
                   strokeWidth: 3,
                 }}
               />
@@ -318,7 +322,7 @@ function NewsInsights({ items }: { items: Evidence[] }) {
       </div>
       <div className="novelty-panel">
         <span className="eyebrow">
-          <Sparkles size={13} /> WHAT’S ACTUALLY NEW?
+          <BookOpen size={16} /> Events in these sources
         </span>
         <h3>
           {events.size} underlying {events.size === 1 ? "event" : "events"}{" "}
@@ -500,20 +504,14 @@ export function ResultsSection({
         <div>
           <span className="eyebrow">
             <span className="blue-dash" />
-            {s.mode === "universe"
-              ? "FOLLOW THE EVIDENCE"
-              : current.name.toUpperCase()}
+            {s.mode === "universe" ? "FOLLOW THE EVIDENCE" : current.name}
           </span>
           <h2>
             {s.mode === "universe"
               ? "Evidence and sources"
               : current.description}
           </h2>
-          <p>
-            {s.run.demo
-              ? "Explore a curated example: efficient AI inference."
-              : s.run.query}
-          </p>
+          <p>{s.run.demo ? `Curated example: ${s.run.query}` : s.run.query}</p>
         </div>
         <div className="results-heading-actions">
           <span className={`data-badge ${s.run.demo ? "" : "live"}`}>
@@ -589,7 +587,8 @@ export function ResultsSection({
                   <strong>{claim.text}</strong>
                   <small>
                     <span className={`confidence-dot ${claim.confidence}`} />
-                    {claim.confidence} confidence <span>·</span>
+                    {CONFIDENCE_LABELS[claim.confidence]} confidence{" "}
+                    <span>·</span>
                     {claim.evidenceIds.length} supporting records
                   </small>
                 </span>
@@ -716,7 +715,7 @@ export function ResultsSection({
                   ) : i === 3 ? (
                     <BriefcaseBusiness size={18} />
                   ) : (
-                    <Sparkles size={17} />
+                    <BookOpen size={17} />
                   )}
                 </span>
                 <small>{step}</small>
@@ -817,7 +816,7 @@ export function ResultsSection({
       {s.mode === "universe" && (
         <div className="why-matters-strip">
           <span className="why-icon">
-            <Sparkles size={19} />
+            <BookOpen size={19} />
           </span>
           <div>
             <span className="eyebrow">WHY THIS MATTERS</span>
@@ -875,7 +874,7 @@ export function ResultsSection({
         <div className="research-next">
           <div>
             <span className="eyebrow">
-              <Sparkles size={13} /> THE NEXT QUESTION
+              <BookOpen size={16} /> Next research question
             </span>
             <h3>Where does the evidence end?</h3>
             <p>

@@ -9,7 +9,7 @@ test("knowledge universe, spatial evidence, commands, and source-linked export",
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Search research, jobs,",
   );
-  await expect(page.locator(".data-mode")).toContainText("Demo mode");
+  await expect(page.locator(".data-mode")).toContainText("Demo data");
   await expect(page.locator(".node-label").first()).toBeVisible({
     timeout: 20000,
   });
@@ -47,9 +47,7 @@ test("knowledge universe, spatial evidence, commands, and source-linked export",
     .getByRole("button", { name: "Show supporting nodes on graph" })
     .click();
   await page.keyboard.press("Control+k");
-  await expect(
-    page.getByRole("dialog", { name: "Commands" }),
-  ).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Commands" })).toBeVisible();
   await page.getByRole("textbox", { name: "Search commands" }).fill("export");
   await page.keyboard.press("Enter");
   await expect(
@@ -101,7 +99,7 @@ test("demo progress and meaningful investigation modes", async ({ page }) => {
     .click();
   await expect(page.locator(".illustrative-label")).toHaveCount(2);
   await expect(page.locator(".result-relevance").first()).toContainText(
-    "Query relevance",
+    "Evidence confidence",
   );
   await page
     .getByRole("button", { name: "Add your skills", exact: true })
@@ -111,9 +109,11 @@ test("demo progress and meaningful investigation modes", async ({ page }) => {
     .fill("Python, PyTorch");
   await page.getByRole("button", { name: "Save my skills" }).click();
   await expect(page.locator(".result-relevance").first()).toContainText(
-    "Skill overlap",
+    "listed skills",
   );
-  await expect(page.locator(".result-relevance").first()).toContainText("67");
+  await expect(page.locator(".result-relevance").first()).toContainText(
+    "2 of 3",
+  );
 });
 
 test("mobile accessibility, timeline, comparison, and empty filters", async ({

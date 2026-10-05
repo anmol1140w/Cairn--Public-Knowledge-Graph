@@ -14,6 +14,7 @@ interface KnowledgeState {
   run: Investigation;
   mode: Mode;
   demo: boolean;
+  theme: "light" | "dark";
   view: "3d" | "2d" | "list";
   query: string;
   sources: SourceEngine[];
@@ -56,6 +57,7 @@ export const useKnowledge = create<KnowledgeState>()(
       run: DEMO,
       mode: "universe",
       demo: true,
+      theme: "light",
       view: "3d",
       query: "",
       sources: [],
@@ -106,7 +108,11 @@ export const useKnowledge = create<KnowledgeState>()(
     }),
     {
       name: "pkg-preferences",
-      partialize: (s) => ({ accessibility: s.accessibility, skills: s.skills }),
+      partialize: (s) => ({
+        accessibility: s.accessibility,
+        skills: s.skills,
+        theme: s.theme,
+      }),
     },
   ),
 );

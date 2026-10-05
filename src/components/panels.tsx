@@ -24,6 +24,7 @@ import {
 } from "@/lib/types";
 import { formatDate, skillMatch } from "@/lib/graph-utils";
 import { useDialog } from "./use-dialog";
+import { CONFIDENCE_LABELS } from "@/lib/confidence";
 
 export function Confidence({ claim }: { claim: Claim }) {
   const bars = { high: 10, medium: 6, low: 3, insufficient: 1 };
@@ -31,13 +32,9 @@ export function Confidence({ claim }: { claim: Claim }) {
     <div className={`confidence-block ${claim.confidence}`}>
       <div className="confidence-top">
         <span>
-          <ShieldCheck size={14} /> EVIDENCE CONFIDENCE
+          <ShieldCheck size={16} /> Evidence confidence
         </span>
-        <strong>
-          {claim.confidence === "insufficient"
-            ? "INSUFFICIENT"
-            : claim.confidence.toUpperCase()}
-        </strong>
+        <strong>{CONFIDENCE_LABELS[claim.confidence]}</strong>
       </div>
       <div className="confidence-meter">
         {Array.from({ length: 10 }, (_, i) => (
@@ -746,7 +743,7 @@ export function EvidenceDrawer() {
         initial={{ x: "100%" }}
         animate={{ x: 0 }}
         exit={{ x: "100%" }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.2 }}
       >
         <div className="drawer-heading">
           <div>
@@ -798,7 +795,7 @@ export function EvidenceDrawer() {
             <div>
               <div className="source-heading">
                 <span style={{ color: CATEGORIES[item.type].color }}>
-                  {CATEGORIES[item.type].label.toUpperCase()}
+                  {CATEGORIES[item.type].label}
                 </span>
                 <span>{item.primary ? "PRIMARY SOURCE" : "SOURCE RECORD"}</span>
               </div>
