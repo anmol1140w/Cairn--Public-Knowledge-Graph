@@ -65,9 +65,9 @@ export function EvidenceCard({
             className="category-dot"
             style={{ background: CATEGORIES[evidence.type].color }}
           />
-          {CATEGORIES[evidence.type].label.toUpperCase()}
+          {CATEGORIES[evidence.type].label}
           {evidence.metadata?.illustrative === true && (
-            <span className="illustrative-label">ILLUSTRATIVE ROLE</span>
+            <span className="illustrative-label">Illustrative role</span>
           )}
         </div>
         <h3>
@@ -117,7 +117,7 @@ export function EvidenceCard({
         </div>
       </div>
       <div className="result-relevance">
-        <span>{match ? "SKILL OVERLAP" : "QUERY RELEVANCE"}</span>
+        <span>{match ? "Skill overlap" : "Query relevance"}</span>
         <strong>
           {match ? match.score : Math.round(evidence.relevanceScore * 100)}
           <small>%</small>
@@ -164,7 +164,7 @@ function ResearchTimeline({ items }: { items: Evidence[] }) {
       <div className="research-timeline">
         <div className="section-mini-heading">
           <span>
-            <TrendingUp size={13} /> RESEARCH TIMELINE
+            <TrendingUp size={13} /> Research timeline
           </span>
           <small>
             Retrieved papers · {s.run.demo ? "demo" : "this investigation"}
@@ -185,13 +185,13 @@ function ResearchTimeline({ items }: { items: Evidence[] }) {
               <CartesianGrid stroke="#202534" vertical={false} />
               <XAxis
                 dataKey="year"
-                tick={{ fill: "#8c93a7", fontSize: 11 }}
+                tick={{ fill: "var(--muted)", fontSize: 14 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 allowDecimals={false}
-                tick={{ fill: "#8c93a7", fontSize: 10 }}
+                tick={{ fill: "var(--muted)", fontSize: 14 }}
                 axisLine={false}
                 tickLine={false}
               />
@@ -224,7 +224,7 @@ function ResearchTimeline({ items }: { items: Evidence[] }) {
       <div className="research-clusters">
         <div className="section-mini-heading">
           <span>
-            <Network size={13} /> RESEARCH CLUSTERS
+            <Network size={13} /> Research clusters
           </span>
         </div>
         {Array.from(clusters).map(([name, count]) => (
@@ -277,7 +277,7 @@ function NewsInsights({ items }: { items: Evidence[] }) {
   return (
     <div className="news-insights">
       <div className="news-claim-map">
-        <span className="eyebrow">ONE CLAIM. MULTIPLE PERSPECTIVES.</span>
+        <span className="eyebrow">Claim and source perspectives</span>
         <h3>
           {displayedClaim?.text ??
             "What do the retrieved sources actually establish?"}
@@ -303,10 +303,10 @@ function NewsInsights({ items }: { items: Evidence[] }) {
                 <strong>{item.source}</strong>
                 <span className={`stance ${stance}`}>
                   {stance === "conflicts"
-                    ? "CONFLICTING EVIDENCE"
+                    ? "Conflicting evidence"
                     : stance === "supports"
-                      ? "SUPPORTING EVIDENCE"
-                      : "CONTEXT · NOT ASSESSED"}
+                      ? "Supporting evidence"
+                      : "Context · Not assessed"}
                 </span>
                 <small>
                   {item.primary ? "Primary source" : "Source record"}
@@ -518,7 +518,7 @@ export function ResultsSection({
         <div className="results-heading-actions">
           <span className={`data-badge ${s.run.demo ? "" : "live"}`}>
             <span className="status-dot" />
-            {s.run.demo ? "DEMO DATA" : "LIVE EVIDENCE"}
+            {s.run.demo ? "Demo data" : "Live evidence"}
           </span>
           <button
             className="icon-button"
@@ -589,7 +589,7 @@ export function ResultsSection({
                   <strong>{claim.text}</strong>
                   <small>
                     <span className={`confidence-dot ${claim.confidence}`} />
-                    {claim.confidence.toUpperCase()} CONFIDENCE <span>·</span>
+                    {claim.confidence} confidence <span>·</span>
                     {claim.evidenceIds.length} supporting records
                   </small>
                 </span>
@@ -956,9 +956,7 @@ export function DiscoverySection() {
         ))}
       </div>
       <div className="curiosity-cta">
-        <span>
-          Search across the sources relevant to your question.
-        </span>
+        <span>Search across the sources relevant to your question.</span>
         <h3>Search a topic or question</h3>
         <button
           className="primary-button"

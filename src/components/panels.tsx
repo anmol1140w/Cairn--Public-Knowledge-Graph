@@ -239,7 +239,7 @@ export function EntityPanel({
             className="category-dot"
             style={{ background: CATEGORIES[node.type].color }}
           />{" "}
-          {CATEGORIES[node.type].label.toUpperCase()}
+          {CATEGORIES[node.type].label}
         </span>
         <button
           className="icon-button"
@@ -252,9 +252,9 @@ export function EntityPanel({
       <h2>{node.title}</h2>
       <p className="panel-subtitle">{node.subtitle}</p>
       <div className="panel-data-label">
-        {s.run.demo ? "DEMO DATA" : "LIVE EVIDENCE"}
+        {s.run.demo ? "Demo data" : "Live evidence"}
         {metadata.illustrative === true && (
-          <span>ILLUSTRATIVE · NOT A LIVE VACANCY</span>
+          <span>Illustrative · Not a live vacancy</span>
         )}
       </div>
       <div className="panel-tabs">
@@ -303,7 +303,7 @@ export function EntityPanel({
             {match && (
               <div className="skill-match">
                 <div>
-                  <span>YOUR SKILL OVERLAP</span>
+                  <span>Your skill overlap</span>
                   <strong>{match.score}%</strong>
                 </div>
                 <div className="relevance-track">

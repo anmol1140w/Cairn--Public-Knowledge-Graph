@@ -377,9 +377,7 @@ export default function Universe({
           >
             <span>{node.label}</span>
             <small style={{ color: CATEGORIES[node.type].color }}>
-              {node.type === "topic"
-                ? "CONNECTED TOPIC"
-                : CATEGORIES[node.type].label.toUpperCase()}
+              {CATEGORIES[node.type].label}
             </small>
           </button>
         ))}

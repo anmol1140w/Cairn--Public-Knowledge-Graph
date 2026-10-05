@@ -101,7 +101,7 @@ test("demo progress and meaningful investigation modes", async ({ page }) => {
     .click();
   await expect(page.locator(".illustrative-label")).toHaveCount(2);
   await expect(page.locator(".result-relevance").first()).toContainText(
-    "QUERY RELEVANCE",
+    "Query relevance",
   );
   await page
     .getByRole("button", { name: "Add your skills", exact: true })
@@ -111,7 +111,7 @@ test("demo progress and meaningful investigation modes", async ({ page }) => {
     .fill("Python, PyTorch");
   await page.getByRole("button", { name: "Save my skills" }).click();
   await expect(page.locator(".result-relevance").first()).toContainText(
-    "SKILL OVERLAP",
+    "Skill overlap",
   );
   await expect(page.locator(".result-relevance").first()).toContainText("67");
 });
@@ -194,7 +194,7 @@ test("live error state preserves the labelled demo and supports retry without pa
   await expect(page.locator(".search-error")).toContainText(
     "temporarily unavailable",
   );
-  await expect(page.locator(".graph-corner-label")).toContainText("DEMO DATA");
+  await expect(page.locator(".graph-corner-label")).toContainText("Demo data");
   await page.getByRole("button", { name: "Try again", exact: true }).click();
   await expect(page.locator(".search-error")).toBeVisible();
 });

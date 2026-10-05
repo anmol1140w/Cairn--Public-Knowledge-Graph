@@ -291,7 +291,8 @@ export function KnowledgeApp() {
           >
             <BrandMark />
             <span>
-              {BRAND.name}<span className="brand-secondary">{BRAND.tagline}</span>
+              {BRAND.name}
+              <span className="brand-secondary">{BRAND.tagline}</span>
             </span>
           </button>
           <nav className="main-nav" aria-label="Investigation modes">
@@ -352,7 +353,9 @@ export function KnowledgeApp() {
                 <h1>
                   {s.mode === "universe" ? (
                     <>
-                      Search research, jobs,<br />news and patents.
+                      Search research, jobs,
+                      <br />
+                      news and patents.
                     </>
                   ) : (
                     <>
@@ -404,7 +407,7 @@ export function KnowledgeApp() {
                   </button>
                 </form>
                 <div className="source-select">
-                  <span className="source-label">LOOK ACROSS</span>
+                  <span className="source-label">Sources</span>
                   {(Object.keys(SOURCE_LABELS) as SourceEngine[]).map(
                     (source) => {
                       const Icon = sourceIcons[source];
@@ -505,8 +508,8 @@ export function KnowledgeApp() {
               <div className="graph-corner-label">
                 <span className="little-cross">+</span>{" "}
                 {s.run.demo
-                  ? "DEMO DATA · CURATED SOURCES"
-                  : "LIVE EVIDENCE · SOURCE-LINKED"}
+                  ? "Demo data · Curated sources"
+                  : "Live evidence · Source-linked"}
               </div>
               <AnimatePresence>
                 {hoverNode && !s.selected && (
@@ -518,7 +521,7 @@ export function KnowledgeApp() {
                     exit={{ opacity: 0 }}
                   >
                     <span style={{ color: CATEGORIES[hoverNode.type].color }}>
-                      {CATEGORIES[hoverNode.type].label.toUpperCase()}
+                      {CATEGORIES[hoverNode.type].label}
                     </span>
                     <strong>{hoverNode.label}</strong>
                     <small>
@@ -684,13 +687,11 @@ export function KnowledgeApp() {
               </span>
               <button
                 onClick={() =>
-                  document
-                    .getElementById("results")
-                    ?.scrollIntoView({
-                      behavior: s.accessibility.reducedMotion
-                        ? "instant"
-                        : "smooth",
-                    })
+                  document.getElementById("results")?.scrollIntoView({
+                    behavior: s.accessibility.reducedMotion
+                      ? "instant"
+                      : "smooth",
+                  })
                 }
               >
                 View source records <ArrowRight size={13} />

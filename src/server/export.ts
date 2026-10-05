@@ -216,6 +216,7 @@ export async function pdfReport(run: Investigation): Promise<Uint8Array> {
       .replace(/[‘’]/g, "'")
       .replace(/[^\x20-\x7E\n]/g, " ");
   const draw = (text: string, size = 10, heavy = false, link?: string) => {
+    size = Math.max(12, size);
     const font = heavy ? bold : regular;
     const words = safe(text).split(/\s+/);
     const lines: string[] = [];
