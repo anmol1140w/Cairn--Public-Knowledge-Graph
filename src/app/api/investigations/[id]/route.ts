@@ -5,9 +5,14 @@ import { sameOrigin } from "@/server/http";
 import { capConfidence } from "@/server/graph-builder";
 import type { Investigation } from "@/lib/types";
 export const runtime = "nodejs";
+
+type InvestigationRouteContext = {
+  params: Promise<{ id: string }>;
+};
+
 export async function GET(
   request: NextRequest,
-  context: RouteContext<"/api/investigations/[id]">,
+  context: InvestigationRouteContext,
 ) {
   void request;
   const { id } = await context.params;
@@ -63,7 +68,7 @@ export async function GET(
 
 export async function DELETE(
   request: NextRequest,
-  context: RouteContext<"/api/investigations/[id]">,
+  context: InvestigationRouteContext,
 ) {
   const { id } = await context.params;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
