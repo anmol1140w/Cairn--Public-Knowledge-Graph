@@ -46,7 +46,7 @@ Current route behaviour is anonymous-session based:
 - `GET /api/investigations/[id]` returns `404` for a fresh session rather than `401`; existing rows are scoped to the anonymous session ID.
 - There are no `/api/me`, logout, OAuth callback, account deletion or investigation deletion routes.
 
-This is the main Phase 2 security boundary and is intentionally not changed before D1/D2 approval.
+This is the main Phase 2 security boundary. D1/D2 are now approved; Phase 2 will replace this anonymous-session boundary with Google/Auth.js account sessions and ownership checks.
 
 ## Confidence measurement
 

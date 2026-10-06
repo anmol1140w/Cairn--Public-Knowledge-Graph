@@ -130,6 +130,7 @@ See [the renovation change list and verification notes](docs/changes.md) for aff
 ```bash
 npm run brand:check
 npm run lint
+npm run contrast:check
 npm run typecheck
 npm test
 npx playwright install chromium

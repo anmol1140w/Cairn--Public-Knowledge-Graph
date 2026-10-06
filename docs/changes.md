@@ -86,6 +86,8 @@ The seven phases cover branding, readability, professional themes/layout, focus-
 - `tests/e2e/profiles.spec.ts`
 - `tests/e2e/acceptance.spec.ts`
 
+Phase 1 foundations: `scripts/check-contrast.mjs`, `src/lib/copy.ts`, `tests/helpers/browser.ts`, `docs/phase1-foundations.md`, and the added design tokens/shared contracts in `src/app/globals.css` and `src/lib/types.ts`.
+
 Checks include brand synchronization, ESLint, TypeScript, offline unit/integration and Chromium browser tests, WCAG AA automated audits, a production build, browser-asset secret scanning and screenshot generation. Browser tests use port 3100 and `.next-tests`; screenshots use port 3101. Both use preloaded/mock data and make no paid search/model requests.
 
 ## Remaining limits

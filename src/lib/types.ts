@@ -13,6 +13,19 @@ export type EntityType =
   | "web";
 export type Mode = "universe" | "scholar" | "news" | "jobs" | "patents";
 export type ConfidenceLevel = "high" | "medium" | "low" | "insufficient";
+export type Confidence = "strong" | "moderate" | "weak" | "unknown";
+export type ReasonCode = keyof typeof import("./copy").COPY.reason;
+export type Edge = Relationship;
+export interface Source {
+  id: string;
+  label: string;
+  domain?: string;
+  kind: "primary" | "secondary" | "official" | "illustrative";
+  publicationDate?: string;
+  retrievedAt?: string;
+  freshness?: "current" | "historical" | "unknown";
+  independenceGroup?: string;
+}
 
 export interface Evidence {
   id: string;
