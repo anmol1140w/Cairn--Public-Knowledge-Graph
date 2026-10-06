@@ -1,11 +1,15 @@
 import { createHash } from "node:crypto";
 import type {
   Claim,
+  ClaimState,
+  ConflictCheckState,
   EntityType,
   Evidence,
   GraphEntity,
+  ReasonCode,
   Relationship,
 } from "@/lib/types";
+import { COPY } from "@/lib/copy";
 
 export interface ExtractedEntity {
   key: string;
@@ -47,10 +51,13 @@ export function evidenceText(item: Evidence): string {
     .filter(Boolean)
     .join("\n");
 }
+export function quoteText(item: Evidence): string {
+  return item.excerpt ?? item.snippet ?? "";
+}
 export function quotedInEvidence(quote: string, item: Evidence): boolean {
   return (
     quote.trim().length >= 12 &&
-    folded(evidenceText(item)).includes(folded(quote))
+    folded(quoteText(item)).includes(folded(quote))
   );
 }
 export function sourceFamily(item: Evidence): string {
@@ -60,94 +67,136 @@ export function sourceFamily(item: Evidence): string {
     return `research:${folded(item.authors[0])}`;
   if (item.type === "job" && item.metadata?.company)
     return `employer:${folded(String(item.metadata.company))}`;
+  if (item.sourceRecord?.independenceGroup)
+    return `source:${folded(item.sourceRecord.independenceGroup)}`;
   return new URL(item.url).hostname.replace(/^www\./, "");
 }
-export function capConfidence(claim: Claim, evidence: Evidence[]): Claim {
-  if (claim.confidence !== "high") return claim;
-  const supporting = evidence.filter((e) => claim.evidenceIds.includes(e.id));
-  const primaryFamilies = new Set(
-    supporting.filter((e) => e.primary === true).map(sourceFamily),
+
+export interface GroundingOptions {
+  conflictCheck?: ConflictCheckState;
+}
+
+const legacyConfidence = (confidence: Claim["confidence"]) =>
+  confidence === "insufficient" ? "low" : confidence;
+
+function reasonRaise(reasonCodes: ReasonCode[]) {
+  if (!reasonCodes.length)
+    return "Continue checking the original sources and surrounding context.";
+  return (
+    COPY.reason[reasonCodes[0] ?? "NO_CONFIRMATION"]?.raise ??
+    COPY.reason.NO_CONFIRMATION.raise
   );
-  if (primaryFamilies.size >= 2 && !claim.conflictingEvidenceIds.length)
-    return claim;
+}
+
+export function assessClaim(
+  claim: GroundedClaim,
+  evidence: Evidence[],
+  options: GroundingOptions = {},
+): Claim {
+  const map = new Map(evidence.map((item) => [item.id, item]));
+  const evidenceIds = [...new Set(claim.evidenceIds.filter((id) => map.has(id)))];
+  const conflictingEvidenceIds = [
+    ...new Set(claim.conflictingEvidenceIds.filter((id) => map.has(id))),
+  ];
+  const supportingQuotes = (claim.supportingQuotes ?? []).filter(
+    (quote) =>
+      evidenceIds.includes(quote.evidenceId) &&
+      quotedInEvidence(quote.text, map.get(quote.evidenceId)!),
+  );
+  const conflictingQuotes = (claim.conflictingQuotes ?? []).filter(
+    (quote) =>
+      conflictingEvidenceIds.includes(quote.evidenceId) &&
+      quotedInEvidence(quote.text, map.get(quote.evidenceId)!),
+  );
+  const missingEvidence = claim.evidenceIds.some((id) => !map.has(id));
+  const missingSupportingQuote = evidenceIds.some(
+    (id) => !supportingQuotes.some((quote) => quote.evidenceId === id),
+  );
+  const missingConflictingQuote = conflictingEvidenceIds.some(
+    (id) => !conflictingQuotes.some((quote) => quote.evidenceId === id),
+  );
+  const supporting = evidenceIds.map((id) => map.get(id)!);
+  const families = new Set(supporting.map(sourceFamily));
+  const independentFamilies = new Set(
+    supporting
+      .filter(
+        (item) =>
+          item.primary === true ||
+          item.sourceRecord?.kind === "primary" ||
+          item.sourceRecord?.kind === "official",
+      )
+      .map(sourceFamily),
+  );
+  const conflictCheck =
+    options.conflictCheck ??
+    claim.conflictCheck ??
+    (conflictingEvidenceIds.length ? "found" : "not_run");
+  const reasons = new Set<ReasonCode>(claim.reasonCodes ?? []);
+  if (!evidenceIds.length || missingEvidence || missingSupportingQuote) {
+    reasons.add("INCOMPLETE_EXCERPT");
+    reasons.add("NO_CONFIRMATION");
+  }
+  if (conflictingEvidenceIds.length && missingConflictingQuote) {
+    reasons.add("INCOMPLETE_EXCERPT");
+    reasons.add("NO_CONFIRMATION");
+  }
+  if (families.size <= 1) reasons.add("SINGLE_SOURCE");
+  if (independentFamilies.size < 2) reasons.add("INDEPENDENCE_UNCLEAR");
+  if (conflictCheck === "not_run") reasons.add("NOT_RUN_CONFLICT_CHECK");
+  if (conflictingEvidenceIds.length && !missingConflictingQuote)
+    reasons.add("CONFLICT_FOUND");
+
+  let state: ClaimState = claim.state ?? "supported";
+  if (
+    !evidenceIds.length ||
+    missingEvidence ||
+    missingSupportingQuote ||
+    (conflictingEvidenceIds.length && missingConflictingQuote)
+  )
+    state = "unknown";
+  else if (conflictingEvidenceIds.length && !missingConflictingQuote)
+    state = "conflicted";
+  const confidence = legacyConfidence(claim.confidence);
+  const cappedConfidence =
+    state === "unknown"
+      ? "low"
+      : state === "conflicted" && confidence === "high"
+        ? "medium"
+        : confidence === "high" &&
+            (independentFamilies.size < 2 || conflictCheck !== "passed")
+          ? "medium"
+          : confidence;
   return {
     ...claim,
-    confidence: "medium",
-    rationale: `${claim.rationale} High confidence was limited because independent primary confirmation was not established, or conflicting evidence is present.`,
+    evidenceIds,
+    conflictingEvidenceIds,
+    confidence: cappedConfidence,
+    state,
+    reasonCodes: [...reasons],
+    sourceFamilyCount: families.size,
+    independentSourceCount: independentFamilies.size,
+    conflictCheck,
+    whatWouldRaiseConfidence: reasonRaise([...reasons]),
+    supportingQuotes,
+    conflictingQuotes,
   };
+}
+
+export function capConfidence(claim: Claim, evidence: Evidence[]): Claim {
+  return assessClaim(
+    {
+      ...claim,
+      supportingQuotes: claim.supportingQuotes ?? [],
+    },
+    evidence,
+  );
 }
 export function groundedClaims(
   claims: GroundedClaim[],
   evidence: Evidence[],
+  options: GroundingOptions = {},
 ): Claim[] {
-  const map = new Map(evidence.map((e) => [e.id, e]));
-  return claims.flatMap((claim) => {
-    if (
-      !claim.evidenceIds.length ||
-      !claim.evidenceIds.every((id) => map.has(id)) ||
-      !claim.conflictingEvidenceIds.every((id) => map.has(id))
-    )
-      return [];
-    if (
-      claim.evidenceIds.some(
-        (id) =>
-          !claim.supportingQuotes.some(
-            (quote) =>
-              quote.evidenceId === id &&
-              quotedInEvidence(quote.text, map.get(id)!),
-          ),
-      )
-    )
-      return [];
-    if (
-      claim.conflictingEvidenceIds.some(
-        (id) =>
-          !claim.conflictingQuotes?.some(
-            (quote) =>
-              quote.evidenceId === id &&
-              quotedInEvidence(quote.text, map.get(id)!),
-          ),
-      )
-    )
-      return [];
-    const families = new Set(
-      claim.evidenceIds.map((id) => sourceFamily(map.get(id)!)),
-    );
-    const confidence = claim.conflictingEvidenceIds.length
-      ? claim.confidence === "high"
-        ? "medium"
-        : claim.confidence
-      : claim.confidence === "high" && families.size < 2
-        ? "medium"
-        : claim.confidence;
-    return [
-      capConfidence(
-        {
-          id: claim.id,
-          text: claim.text,
-          evidenceIds: [...new Set(claim.evidenceIds)],
-          conflictingEvidenceIds: [...new Set(claim.conflictingEvidenceIds)],
-          confidence,
-          rationale:
-            claim.rationale +
-            (claim.confidence === "high" && families.size < 2
-              ? " Confidence was capped because independent source families were not established."
-              : ""),
-          supportingQuotes: claim.supportingQuotes.filter(
-            (quote) =>
-              claim.evidenceIds.includes(quote.evidenceId) &&
-              quotedInEvidence(quote.text, map.get(quote.evidenceId)!),
-          ),
-          conflictingQuotes: claim.conflictingQuotes?.filter(
-            (quote) =>
-              claim.conflictingEvidenceIds.includes(quote.evidenceId) &&
-              quotedInEvidence(quote.text, map.get(quote.evidenceId)!),
-          ),
-        },
-        evidence,
-      ),
-    ];
-  });
+  return claims.map((claim) => assessClaim(claim, evidence, options));
 }
 
 export function buildGraph(

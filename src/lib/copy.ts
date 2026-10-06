@@ -11,6 +11,32 @@ export const COPY = {
     providers: "Only the question and the profile options you selected are sent to live providers for this investigation.",
     saved: "Saved investigations are stored on the server under your account and can be deleted from your account controls.",
   },
+  onboarding: [
+    {
+      title: "Ask a focused question",
+      body: "Start with a question you can check against public source records.",
+    },
+    {
+      title: "Choose source families",
+      body: "Use Auto for a balanced plan, or choose Scholar, News, Jobs, Patents or Web yourself.",
+    },
+    {
+      title: "Follow the evidence",
+      body: "Every record keeps its original URL, source label, date and retrieved excerpt.",
+    },
+    {
+      title: "Inspect a claim",
+      body: "Open Why? to see the supporting IDs, exact quotes and source relationships.",
+    },
+    {
+      title: "Understand uncertainty",
+      body: "Strong, Moderate and Weak describe support. Still unknown means the evidence check did not establish the statement.",
+    },
+    {
+      title: "Choose your next action",
+      body: "Open the original, retrieve more evidence, change sources or export the investigation.",
+    },
+  ],
   reason: {
     SINGLE_SOURCE: { why: "Only one source supports this statement.", raise: "Find an independent primary source." },
     METADATA_ONLY: { why: "This comes from metadata rather than a directly stated passage.", raise: "Open a source excerpt that states the point." },
@@ -22,5 +48,10 @@ export const COPY = {
     NO_CONFIRMATION: { why: "Independent confirmation was not found in this investigation.", raise: "Search another relevant primary source family." },
     CONFLICT_FOUND: { why: "A source conflicts with this claim or its context.", raise: "Resolve the conflict with clearer primary evidence." },
     NOT_RUN_CONFLICT_CHECK: { why: "A conflict check did not complete.", raise: "Run the conflict check before considering Strong." },
+  },
+  assessment: {
+    supported: "Supported claim",
+    conflicted: "Conflicting evidence",
+    unknown: "Still unknown",
   },
 } as const;

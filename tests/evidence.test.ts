@@ -52,6 +52,11 @@ describe("actual SerpApi response contracts", () => {
     expect(result[0].date).toBe("2022");
     expect(formatDate(result[0].date)).toBe("2022");
     expect(result[0].url).toContain("arxiv.org");
+    expect(result[0].excerpt).toBe("Attention with IO-awareness");
+    expect(result[0].sourceRecord).toMatchObject({
+      kind: "primary",
+      independenceGroup: expect.stringContaining("scholar:"),
+    });
   });
   it("uses Jobs application URLs and preserves unknown deadlines", () => {
     const results = normalizeResults(
@@ -211,8 +216,8 @@ describe("provenance validation", () => {
   };
   it("rejects invented IDs and paraphrases presented as exact evidence", () => {
     expect(
-      groundedClaims([{ ...claim, evidenceIds: ["made-up"] }], [item]),
-    ).toEqual([]);
+      groundedClaims([{ ...claim, evidenceIds: ["made-up"] }], [item])[0],
+    ).toMatchObject({ state: "unknown", confidence: "low", evidenceIds: [] });
     expect(
       groundedClaims(
         [
@@ -227,8 +232,8 @@ describe("provenance validation", () => {
           },
         ],
         [item],
-      ),
-    ).toEqual([]);
+      )[0],
+    ).toMatchObject({ state: "unknown", confidence: "low" });
   });
   it("caps high confidence when independence is unestablished", () => {
     expect(groundedClaims([claim], [item])[0].confidence).toBe("medium");
@@ -238,9 +243,17 @@ describe("provenance validation", () => {
       { ...item, primary: undefined },
       { ...DEMO.evidence[2], primary: undefined },
     ];
+    const secondaryClaim = {
+      ...claim,
+      evidenceIds: secondary.map((e) => e.id),
+      supportingQuotes: secondary.map((e) => ({
+        evidenceId: e.id,
+        text: e.snippet!,
+      })),
+    };
     expect(
       capConfidence(
-        { ...claim, evidenceIds: secondary.map((e) => e.id) },
+        secondaryClaim,
         secondary,
       ).confidence,
     ).toBe("medium");
@@ -250,8 +263,8 @@ describe("provenance validation", () => {
       groundedClaims(
         [{ ...claim, conflictingEvidenceIds: [DEMO.evidence[1].id] }],
         DEMO.evidence,
-      ),
-    ).toEqual([]);
+      )[0],
+    ).toMatchObject({ state: "unknown", confidence: "low" });
   });
   it("maps explicit authorship while rejecting unmentioned entities and unsourced edges", () => {
     const graph = buildGraph("attention", [item], {

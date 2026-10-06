@@ -8,8 +8,10 @@ import {
   failRun,
   saveInvestigation,
   finishSessionOnlyRun,
+  usageSnapshot,
 } from "@/server/storage";
-import { bodyJson, sameOrigin, session, sessionCookie } from "@/server/http";
+import { bodyJson, sameOrigin } from "@/server/http";
+import { authErrorResponse, requireAccount } from "@/server/auth";
 import { config, publicError } from "@/server/config";
 import type { ProgressEvent } from "@/lib/types";
 
@@ -17,10 +19,11 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 export async function POST(request: NextRequest) {
   let input;
-  const user = session(request);
+  let account;
   const runId = randomUUID();
   try {
     sameOrigin(request);
+    account = await requireAccount();
     input = searchSchema.parse(await bodyJson(request, 12000));
     if (!config.serpapiKey())
       return NextResponse.json(
@@ -31,8 +34,10 @@ export async function POST(request: NextRequest) {
         { status: 503 },
       );
     await assertStorage();
-    await beginRun(runId, user.id, input.query);
+    await beginRun(runId, account.accountId, input.query);
   } catch (error) {
+    const response = authErrorResponse(error);
+    if (response) return response;
     return NextResponse.json({ error: publicError(error) }, { status: 400 });
   }
   const encoder = new TextEncoder();
@@ -68,13 +73,16 @@ export async function POST(request: NextRequest) {
       try {
         const result = await investigate(
           input,
-          { sessionId: user.id, runId, signal: combined },
+          { accountId: account.accountId, runId, signal: combined },
           emit,
         );
+        result.usage = await Promise.resolve()
+          .then(() => usageSnapshot())
+          .catch(() => undefined);
         try {
           if (input.profile && !input.saveProfile)
-            await finishSessionOnlyRun(runId);
-          else await saveInvestigation(result, user.id);
+            await finishSessionOnlyRun(runId, account.accountId);
+          else await saveInvestigation(result, account.accountId);
         } catch {
           result.warnings.push(
             "The investigation completed, but its final snapshot could not be persisted. Export your evidence to keep a copy.",
@@ -82,7 +90,7 @@ export async function POST(request: NextRequest) {
         }
         emit({ kind: "result", result });
       } catch (error) {
-        await failRun(runId).catch(() => {});
+        await failRun(runId, account.accountId).catch(() => {});
         emit({ kind: "error", message: publicError(error) });
       } finally {
         clearInterval(heartbeat);
@@ -108,6 +116,5 @@ export async function POST(request: NextRequest) {
       Connection: "keep-alive",
     },
   });
-  if (user.fresh) sessionCookie(response, user.id);
   return response;
 }

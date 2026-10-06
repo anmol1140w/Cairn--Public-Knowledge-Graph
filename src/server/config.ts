@@ -52,5 +52,7 @@ export function publicError(error: unknown): string {
     return "The source’s usage limit was reached. Available evidence is preserved.";
   if (/timeout|timed out|abort/i.test(text))
     return "This source took too long to respond. Try again or continue with available evidence.";
+  if (/json|expected .* after .* array element|unexpected token|validation/i.test(text))
+    return "The model returned an incomplete structured response. Direct source relationships are preserved.";
   return text.slice(0, 260);
 }

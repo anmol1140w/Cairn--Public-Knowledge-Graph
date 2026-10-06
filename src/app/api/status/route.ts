@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { config } from "@/server/config";
 import { dailyUsage } from "@/server/storage";
-import { session, sessionCookie } from "@/server/http";
+import { authenticationConfigured } from "@/server/auth";
 export const runtime = "nodejs";
-export async function GET(request: NextRequest) {
+export async function GET() {
   let usage: number | null = null;
   let databaseReady = false;
   try {
@@ -12,18 +12,24 @@ export async function GET(request: NextRequest) {
   } catch {
     /* Demo mode remains usable without storage. */
   }
-  const response = NextResponse.json(
+  return NextResponse.json(
     {
       searchConfigured: Boolean(config.serpapiKey()),
       modelsConfigured: Boolean(config.ollamaKey()),
+      authConfigured: authenticationConfigured(),
       databaseReady,
       dailyUsage: usage,
       dailyBudget: config.dailyBudget(),
       maxRequestsPerQuery: config.maxSearches(),
+      usage:
+        usage === null
+          ? null
+          : {
+              dailyUsed: usage,
+              dailyBudget: config.dailyBudget(),
+              maxRequestsPerQuery: config.maxSearches(),
+            },
     },
     { headers: { "Cache-Control": "no-store" } },
   );
-  const user = session(request);
-  if (user.fresh) sessionCookie(response, user.id);
-  return response;
 }

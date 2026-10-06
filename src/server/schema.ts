@@ -1,7 +1,9 @@
 import {
   boolean,
+  integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
@@ -9,6 +11,10 @@ import {
 
 export const appUsers = pgTable("app_users", {
   id: uuid("id").primaryKey(),
+  authUserId: text("auth_user_id").unique(),
+  name: text("name"),
+  email: text("email"),
+  image: text("image"),
   skills: jsonb("skills").notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -16,7 +22,10 @@ export const appUsers = pgTable("app_users", {
 });
 export const queries = pgTable("queries", {
   id: uuid("id").primaryKey(),
-  sessionId: uuid("session_id").notNull(),
+  accountId: uuid("account_id").references(() => appUsers.id, {
+    onDelete: "cascade",
+  }),
+  sessionId: uuid("session_id"),
   query: text("query").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -26,7 +35,10 @@ export const searchRuns = pgTable("search_runs", {
   id: uuid("id")
     .primaryKey()
     .references(() => queries.id),
-  sessionId: uuid("session_id").notNull(),
+  accountId: uuid("account_id").references(() => appUsers.id, {
+    onDelete: "cascade",
+  }),
+  sessionId: uuid("session_id"),
   status: text("status").notNull(),
   investigation: jsonb("investigation"),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -72,3 +84,55 @@ export const relationships = pgTable("relationships", {
   evidenceIds: jsonb("evidence_ids").notNull(),
   inferred: boolean("inferred").default(false).notNull(),
 });
+
+// Auth.js tables use their own text identifiers. app_users remains the
+// application account table so legacy anonymous UUID rows can stay orphaned
+// without being mistaken for a signed-in account.
+export const authUsers = pgTable("auth_users", {
+  id: text("id").primaryKey(),
+  name: text("name"),
+  email: text("email").unique(),
+  emailVerified: timestamp("email_verified", { withTimezone: true }),
+  image: text("image"),
+});
+export const authAccounts = pgTable(
+  "auth_accounts",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    provider: text("provider").notNull(),
+    providerAccountId: text("provider_account_id").notNull(),
+    refresh_token: text("refresh_token"),
+    access_token: text("access_token"),
+    expires_at: integer("expires_at"),
+    token_type: text("token_type"),
+    scope: text("scope"),
+    id_token: text("id_token"),
+    session_state: text("session_state"),
+  },
+  (account) => ({
+    compositePk: primaryKey({
+      columns: [account.provider, account.providerAccountId],
+    }),
+  }),
+);
+export const authSessions = pgTable("auth_sessions", {
+  sessionToken: text("session_token").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => authUsers.id, { onDelete: "cascade" }),
+  expires: timestamp("expires", { withTimezone: true }).notNull(),
+});
+export const authVerificationTokens = pgTable(
+  "auth_verification_tokens",
+  {
+    identifier: text("identifier").notNull(),
+    token: text("token").notNull(),
+    expires: timestamp("expires", { withTimezone: true }).notNull(),
+  },
+  (token) => ({
+    compositePk: primaryKey({ columns: [token.identifier, token.token] }),
+  }),
+);

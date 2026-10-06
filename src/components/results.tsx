@@ -36,7 +36,7 @@ import {
 } from "@/lib/types";
 import { formatDate, relevantEvidence, skillMatch } from "@/lib/graph-utils";
 import { appendEvidence } from "@/lib/append-evidence";
-import { CONFIDENCE_LABELS, evidenceStrength } from "@/lib/confidence";
+import { claimAssessment, evidenceStrength } from "@/lib/confidence";
 import { useProfiles } from "@/lib/profile-store";
 import { rankEvidence } from "@/lib/personalization";
 import { ModeInsights, RequirementChecklist } from "./profile-results";
@@ -85,13 +85,29 @@ export function EvidenceCard({
           {evidence.snippet ?? "Open the original source for more context."}
         </p>
         <p className="result-reason">
-          {evidence.primary ? "Primary source record" : "Source record"}{" "}
+          {evidence.primary || evidence.sourceRecord?.kind === "primary"
+            ? "Primary source record"
+            : evidence.sourceRecord?.kind === "official"
+              ? "Official source record"
+              : "Source record"}{" "}
           retrieved for this investigation.
         </p>
         <div className="result-meta">
           <span>{evidence.source}</span>
           <span>·</span>
           <span>{formatDate(evidence.date)}</span>
+          {evidence.sourceRecord?.kind && (
+            <>
+              <span>·</span>
+              <span>{evidence.sourceRecord.kind} record</span>
+            </>
+          )}
+          {evidence.retrievedAt && (
+            <>
+              <span>·</span>
+              <span>retrieved {formatDate(evidence.retrievedAt)}</span>
+            </>
+          )}
           {typeof evidence.metadata?.location === "string" && (
             <>
               <span>·</span>
@@ -337,7 +353,11 @@ function NewsInsights({ items }: { items: Evidence[] }) {
                       : "Context · Not assessed"}
                 </span>
                 <small>
-                  {item.primary ? "Primary source" : "Source record"}
+                   {item.primary || item.sourceRecord?.kind === "primary"
+                     ? "Primary source"
+                     : item.sourceRecord?.kind === "official"
+                       ? "Official source"
+                       : "Source record"}
                 </small>
               </button>
             );
@@ -400,6 +420,9 @@ export function ResultsSection({
   const [pageError, setPageError] = useState("");
   const [exhausted, setExhausted] = useState<string[]>([]);
   const current = MODES.find((m) => m.id === s.mode)!;
+  const unknownClaims = s.run.claims.filter(
+    (claim) => claimAssessment(claim).state === "unknown",
+  );
   const overviewHeading = "What the sources say";
   const relevant = rankEvidence(relevantEvidence(s.run, s.mode), profile);
   const items = relevant.filter((item) => {
@@ -475,6 +498,17 @@ export function ResultsSection({
       ),
   );
   const more = async (source: SourceEngine, item: Evidence) => {
+    const requestMode = s.mode;
+    const requestRunId = s.run.id;
+    const requestGeneration = s.searchGeneration;
+    const stillCurrent = () => {
+      const current = useKnowledge.getState();
+      return (
+        current.mode === requestMode &&
+        current.run.id === requestRunId &&
+        current.searchGeneration === requestGeneration
+      );
+    };
     setPaging(source);
     setPageError("");
     try {
@@ -500,6 +534,7 @@ export function ResultsSection({
         throw new Error(
           result.error ?? "This source page could not be retrieved.",
         );
+      if (!stillCurrent()) return;
       const current = useKnowledge.getState().run;
       const added = (result.evidence as Evidence[]).filter(
         (e) => !current.evidence.some((known) => known.id === e.id),
@@ -515,13 +550,14 @@ export function ResultsSection({
         `${s.run.id}:${source}:${String(cursor)}`,
       ]);
     } catch (error) {
+      if (!stillCurrent()) return;
       setPageError(
         error instanceof Error
           ? error.message
           : "The source page was interrupted.",
       );
     } finally {
-      setPaging(null);
+      if (stillCurrent()) setPaging(null);
     }
   };
   return (
@@ -544,6 +580,14 @@ export function ResultsSection({
             <span className="status-dot" />
             {s.run.demo ? "Demo data" : "Live evidence"}
           </span>
+          {!s.run.demo && s.run.usage && (
+            <span
+              className="data-badge usage-badge"
+              title="SerpApi attempts reserved for this UTC day"
+            >
+              {s.run.usage.dailyUsed}/{s.run.usage.dailyBudget} source attempts
+            </span>
+          )}
           <button
             className="icon-button"
             onClick={() => s.set({ modal: "compare" })}
@@ -570,6 +614,53 @@ export function ResultsSection({
           </div>
         </div>
       )}
+      {unknownClaims.length > 0 && (
+        <div className="unknown-section" aria-label="Still unknown">
+          <div>
+            <span className="eyebrow">WHAT REMAINS UNKNOWN</span>
+            <h3>Still unknown</h3>
+            <p>
+              These statements did not pass the evidence and conflict checks.
+              They are kept visible without being presented as Weak evidence.
+            </p>
+          </div>
+          <div className="unknown-claims">
+            {unknownClaims.map((claim) => {
+              const assessment = claimAssessment(claim);
+              return (
+                <button
+                  key={claim.id}
+                  onClick={() => s.set({ evidenceClaim: claim.id })}
+                >
+                  <strong>{claim.text}</strong>
+                  <small>
+                    {assessment.whatWouldRaiseConfidence}
+                  </small>
+                  <ArrowRight size={15} />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {s.mode !== "universe" && s.run.sources.some((source) => source.state !== "skipped") && (
+        <div className="source-health source-health-global" aria-label="Source health">
+          {s.run.sources
+            .filter((source) => source.state !== "skipped")
+            .map((source) => (
+              <span
+                key={source.source}
+                className={`${source.state === "error" ? "source-failed" : ""} ${source.stale ? "source-stale" : ""}`}
+                title={source.message}
+              >
+                {source.state === "success" ? <Check size={12} /> : <XMark />}
+                {SOURCE_LABELS[source.source]}
+                {source.count !== undefined && ` · ${source.count}`}
+                {source.stale ? " · stale cache" : source.cached ? " · cached" : ""}
+              </span>
+            ))}
+        </div>
+      )}
       {s.mode === "universe" && (
         <div className="answer-overview">
           <div className="answer-story">
@@ -584,42 +675,53 @@ export function ResultsSection({
             <div className="source-health">
               {s.run.sources
                 .filter((source) => source.state !== "skipped")
-                .map((source) => (
-                  <span
-                    key={source.source}
-                    className={source.state === "error" ? "source-failed" : ""}
-                  >
+                 .map((source) => (
+                   <span
+                     key={source.source}
+                     className={`${source.state === "error" ? "source-failed" : ""} ${source.stale ? "source-stale" : ""}`}
+                     title={source.message}
+                   >
                     {source.state === "success" ? (
                       <Check size={12} />
                     ) : (
                       <XMark />
                     )}
                     {SOURCE_LABELS[source.source]}
+                    {source.count !== undefined && ` · ${source.count}`}
+                    {source.stale ? " · stale cache" : source.cached ? " · cached" : ""}
                   </span>
                 ))}
             </div>
           </div>
           <div className="claim-list">
             {s.run.claims.slice(0, 3).map((claim, i) => (
-              <button
-                className="claim-row"
-                key={claim.id}
-                onClick={() => s.set({ evidenceClaim: claim.id })}
-              >
-                <span className="evidence-index">
-                  {(i + 1).toString().padStart(2, "0")}
-                </span>
-                <span>
-                  <strong>{claim.text}</strong>
-                  <small>
-                    <span className={`confidence-dot ${claim.confidence}`} />
-                    {CONFIDENCE_LABELS[claim.confidence]} confidence{" "}
-                    <span>·</span>
-                    {claim.evidenceIds.length} supporting records
-                  </small>
-                </span>
-                <ArrowRight size={16} />
-              </button>
+              (() => {
+                const assessment = claimAssessment(claim);
+                return (
+                  <button
+                    className="claim-row"
+                    key={claim.id}
+                    onClick={() => s.set({ evidenceClaim: claim.id })}
+                  >
+                    <span className="evidence-index">
+                      {(i + 1).toString().padStart(2, "0")}
+                    </span>
+                    <span>
+                      <strong>{claim.text}</strong>
+                      <small>
+                        <span
+                          className={`confidence-dot ${claim.confidence} ${assessment.state}`}
+                        />
+                        {assessment.label}
+                        {assessment.state === "supported" && " confidence"}{" "}
+                        <span>·</span>
+                        {claim.evidenceIds.length} supporting records
+                      </small>
+                    </span>
+                    <ArrowRight size={16} />
+                  </button>
+                );
+              })()
             ))}
             {!s.run.claims.length && (
               <div className="empty-state">

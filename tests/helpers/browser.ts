@@ -2,9 +2,14 @@ import type { Page } from "@playwright/test";
 
 export interface TestUser { id: string; email?: string; name?: string }
 
-/** Future auth tests can replace this route with the real Auth.js session fixture. */
+/** Browser auth tests use this until a real OAuth provider fixture is configured. */
 export async function loginAs(page: Page, user: TestUser = { id: "test-user" }) {
-  await page.route("**/api/me", (route) => route.fulfill({ status: 200, json: { user } }));
+  await page.route("**/api/me", (route) =>
+    route.fulfill({
+      status: 200,
+      json: { authenticated: true, authConfigured: true, user },
+    }),
+  );
 }
 
 export async function useRecordedProviderResponses(page: Page, responses: Record<string, unknown>) {

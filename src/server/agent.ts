@@ -182,7 +182,17 @@ export async function investigate(
         return { sources: [status] };
       }
       if (sourceStage[source]) stage(sourceStage[source]!);
-      emit({ kind: "source", source: { source, state: "running" } });
+      const startedAt = new Date().toISOString();
+      const started = Date.now();
+      emit({
+        kind: "source",
+        source: {
+          source,
+          state: "running",
+          provider: "SerpApi MCP",
+          startedAt,
+        },
+      });
       try {
         const result = await serpapiSearch(
           engineParameters(planned, input.profile),
@@ -199,6 +209,15 @@ export async function investigate(
           state: "success",
           count: normalized.length,
           cached: result.cached,
+          stale: result.stale,
+          provider: "SerpApi MCP",
+          retrievedAt: result.retrievedAt,
+          startedAt,
+          finishedAt: new Date().toISOString(),
+          durationMs: Date.now() - started,
+          message: result.stale
+            ? "Provider unavailable; using an expired cached snapshot. Verify the original source before relying on freshness."
+            : undefined,
         };
         emit({ kind: "source", source: status });
         if (sourceStage[source]) stage(sourceStage[source]!, "complete");
@@ -211,11 +230,24 @@ export async function investigate(
             },
           ],
           sources: [status],
+          warnings: result.stale
+            ? [
+                `${source[0].toUpperCase() + source.slice(1)} returned an expired cached snapshot after the provider failed. Check the original source before relying on freshness.`,
+              ]
+            : [],
         };
       } catch (error) {
         context.signal?.throwIfAborted();
         const message = publicError(error);
-        const status: SourceStatus = { source, state: "error", message };
+        const status: SourceStatus = {
+          source,
+          state: "error",
+          message,
+          provider: "SerpApi MCP",
+          startedAt,
+          finishedAt: new Date().toISOString(),
+          durationMs: Date.now() - started,
+        };
         emit({ kind: "source", source: status });
         if (sourceStage[source])
           emit({ kind: "stage", stage: sourceStage[source], state: "error" });
@@ -477,7 +509,9 @@ export async function investigate(
           4200,
           !privateDetails,
         );
-        const claims = groundedClaims(result.claims, state.evidence);
+        const claims = groundedClaims(result.claims, state.evidence, {
+          conflictCheck: "passed",
+        });
         const impact = result.impact
           ? groundedClaims(
               [
@@ -492,23 +526,37 @@ export async function investigate(
                 },
               ],
               state.evidence,
+              { conflictCheck: "passed" },
             )[0]
           : undefined;
         stage("Following the evidence", "complete");
+        const establishedClaims = claims.filter(
+          (claim) => claim.state === "supported",
+        );
+        const unknownClaims = claims.filter(
+          (claim) => claim.state === "unknown",
+        );
         return {
           claims: impact ? [...claims, impact] : claims,
-          summary: claims.length
-            ? claims
+          summary: establishedClaims.length
+            ? establishedClaims
                 .slice(0, 2)
                 .map((claim) => claim.text)
                 .join(" ")
             : fallback.summary,
-          whyItMatters: impact?.text ?? fallback.whyItMatters,
-          warnings: claims.length
-            ? []
-            : [
-                "The model’s proposed claims did not pass quote and source validation. Original evidence is available below.",
-              ],
+          whyItMatters:
+            impact?.state === "supported"
+              ? impact.text
+              : fallback.whyItMatters,
+          warnings: unknownClaims.length
+            ? [
+                "Some proposed claims remain Still unknown because their evidence or conflict checks were incomplete. Original source records remain available below.",
+              ]
+            : establishedClaims.length
+              ? []
+              : [
+                  "The model’s proposed claims did not pass quote and source validation. Original evidence is available below.",
+                ],
         };
       } catch (error) {
         context.signal?.throwIfAborted();

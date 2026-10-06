@@ -8,6 +8,8 @@ import {
   pdfReport,
 } from "@/server/export";
 import { bodyJson, sameOrigin } from "@/server/http";
+import { authErrorResponse, requireAccount } from "@/server/auth";
+import { ownsInvestigation } from "@/server/storage";
 import { publicError } from "@/server/config";
 import { exportFilename } from "@/lib/brand";
 export const runtime = "nodejs";
@@ -21,6 +23,17 @@ export async function POST(request: NextRequest) {
     const { format, investigation } = schema.parse(
       await bodyJson(request, 2000000),
     );
+    if (!investigation.demo) {
+      const account = await requireAccount();
+      if (
+        !investigation.sessionOnly &&
+        !(await ownsInvestigation(investigation.id, account.accountId))
+      )
+        return NextResponse.json(
+          { error: "Investigation not found." },
+          { status: 404 },
+        );
+    }
     let body: string | Uint8Array;
     let mime: string;
     let extension: string;
@@ -56,6 +69,8 @@ export async function POST(request: NextRequest) {
       },
     );
   } catch (error) {
+    const response = authErrorResponse(error);
+    if (response) return response;
     return NextResponse.json({ error: publicError(error) }, { status: 400 });
   }
 }

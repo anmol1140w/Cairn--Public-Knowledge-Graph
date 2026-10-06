@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { DEMO } from "../../src/lib/demo";
+import { loginAs } from "../helpers/browser";
 
 test("preloaded Scholar, Jobs and News examples issue no search or model requests", async ({
   page,
@@ -30,11 +31,12 @@ test("light, dark and mobile profile UI pass WCAG AA automated checks", async ({
   const audit = async () => {
     if (await page.getByRole("dialog").count())
       await expect(page.locator(".modal")).toHaveCSS("opacity", "1");
-    else
+    else if (await page.locator(".result-row").count())
       await expect(page.locator(".result-row").first()).toHaveCSS(
         "opacity",
         "1",
       );
+    else await expect(page.locator(".results-section")).toBeVisible();
     const results = await new AxeBuilder({ page })
       .include(".knowledge-app")
       .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
@@ -72,6 +74,7 @@ test("light, dark and mobile profile UI pass WCAG AA automated checks", async ({
 test("large graph uses instancing and progressively reveals the initial 1000-node cap", async ({
   page,
 }) => {
+  await loginAs(page);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.route("**/api/status", (route) =>
     route.fulfill({ json: { searchConfigured: true } }),

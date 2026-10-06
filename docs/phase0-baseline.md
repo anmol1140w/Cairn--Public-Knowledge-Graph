@@ -9,7 +9,7 @@ The baseline was run from `/home/anmol/public-knowledge-graph` at `2026-10-06T05
 | `npm run brand:check` | Pass — brand, README, package names and icon agree. Node emits the existing module-type warning. |
 | `npm run lint` | Pass |
 | `npm run typecheck` | Pass |
-| `npm test` | Pass — 30 tests: 29 passing and 1 expected failure. The Phase 0 mode-isolation characterization is an expected failure via `it.fails`. |
+| `npm test` | Phase 0 baseline — 30 tests: 29 passing and 1 expected failure. The later Phase 3 workspace work converts that characterization into a passing regression test. |
 | `npm run test:e2e` | Pass — 18 browser tests |
 | `npm run build` | Pass — Next.js 16.3.8 production build |
 | `npm run verify:secrets` | Pass — 13 browser assets checked; no server keys bundled |
@@ -46,7 +46,7 @@ Current route behaviour is anonymous-session based:
 - `GET /api/investigations/[id]` returns `404` for a fresh session rather than `401`; existing rows are scoped to the anonymous session ID.
 - There are no `/api/me`, logout, OAuth callback, account deletion or investigation deletion routes.
 
-This is the main Phase 2 security boundary. D1/D2 are now approved; Phase 2 will replace this anonymous-session boundary with Google/Auth.js account sessions and ownership checks.
+This was the main Phase 2 security boundary. D1/D2 are now approved and implemented; see [Phase 2 authentication](phase2-authentication.md) for the account-session replacement.
 
 ## Confidence measurement
 
@@ -69,7 +69,7 @@ Known policy gaps against the new plan:
 
 ## State-leak reproduction
 
-`tests/mode-isolation.test.ts` contains an expected-failing characterization: put the Explore demo in `run`, switch to News, and assert that News starts with no evidence. It currently fails because `setMode()` changes mode/filters but retains `run`. This is the regression target for Phase 3.
+`tests/mode-isolation.test.ts` was the Phase 0 expected-failing characterization: put the Explore demo in `run`, switch to News, and assert that News starts with no evidence. Phase 3 now passes this regression and also verifies that each mode preserves its own investigation when revisited.
 
 ## Screenshot inventory
 

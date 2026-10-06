@@ -241,9 +241,14 @@ export function Explorer() {
           viewer.set({ hovering: false, dragging: false });
           viewer.interact();
         }}
-        onPointerDownCapture={() => {
-          viewer.set({ active: true });
-          viewer.interact();
+        onPointerDownCapture={(event) => {
+          // Touch scrolling remains page-owned until the explicit Activate
+          // viewer control is used. Mouse and pen interaction can activate on
+          // entry because they do not compete with normal page scrolling.
+          if (event.pointerType !== "touch") {
+            viewer.set({ active: true });
+            viewer.interact();
+          }
         }}
         onKeyDown={(event) => {
           if (event.key === "Enter") {

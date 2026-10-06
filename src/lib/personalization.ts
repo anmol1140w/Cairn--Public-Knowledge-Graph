@@ -207,7 +207,7 @@ export function rankEvidence(items: Evidence[], profile?: Profile) {
     if (
       profile.mode === "news" &&
       profile.sourceTypes.includes("Primary sources") &&
-      e.primary
+      (e.primary || e.sourceRecord?.kind === "primary")
     )
       score += 0.2;
     if (profile.mode === "patents")

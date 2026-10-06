@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { loginAs } from "../helpers/browser";
 test("job details validate inline, stay in tab storage, and can be cleared", async ({
   page,
   context,
@@ -54,6 +55,7 @@ test("job details validate inline, stay in tab storage, and can be cleared", asy
 });
 
 test("mode profiles reach one search request", async ({ page }) => {
+  await loginAs(page);
   await page.route("**/api/status", (route) =>
     route.fulfill({ json: { searchConfigured: true } }),
   );

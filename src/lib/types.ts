@@ -14,6 +14,8 @@ export type EntityType =
 export type Mode = "universe" | "scholar" | "news" | "jobs" | "patents";
 export type ConfidenceLevel = "high" | "medium" | "low" | "insufficient";
 export type Confidence = "strong" | "moderate" | "weak" | "unknown";
+export type ClaimState = "supported" | "conflicted" | "unknown";
+export type ConflictCheckState = "passed" | "found" | "not_run";
 export type ReasonCode = keyof typeof import("./copy").COPY.reason;
 export type Edge = Relationship;
 export interface Source {
@@ -40,6 +42,8 @@ export interface Evidence {
   engine?: SourceEngine;
   retrievedAt?: string;
   primary?: boolean;
+  excerpt?: string;
+  sourceRecord?: Source;
   metadata?: Record<string, unknown>;
 }
 
@@ -82,6 +86,13 @@ export interface Claim {
   conflictingEvidenceIds: string[];
   confidence: ConfidenceLevel;
   rationale: string;
+  /** Unknown is an assessment state, never a confidence rank. */
+  state?: ClaimState;
+  reasonCodes?: ReasonCode[];
+  sourceFamilyCount?: number;
+  independentSourceCount?: number;
+  conflictCheck?: ConflictCheckState;
+  whatWouldRaiseConfidence?: string;
   supportingQuotes?: { evidenceId: string; text: string }[];
   conflictingQuotes?: { evidenceId: string; text: string }[];
 }
@@ -91,7 +102,19 @@ export interface SourceStatus {
   state: "pending" | "running" | "success" | "error" | "skipped";
   count?: number;
   cached?: boolean;
+  stale?: boolean;
+  provider?: string;
+  retrievedAt?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  durationMs?: number;
   message?: string;
+}
+
+export interface UsageSummary {
+  dailyUsed: number;
+  dailyBudget: number;
+  maxRequestsPerQuery: number;
 }
 
 export interface Investigation {
@@ -107,6 +130,7 @@ export interface Investigation {
   summary: string;
   whyItMatters: string;
   sources: SourceStatus[];
+  usage?: UsageSummary;
   createdAt: string;
   warnings: string[];
 }

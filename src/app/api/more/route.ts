@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { bodyJson, sameOrigin, session, sessionCookie } from "@/server/http";
+import { bodyJson, sameOrigin } from "@/server/http";
+import { authErrorResponse, requireAccount } from "@/server/auth";
 import { assertStorage } from "@/server/storage";
 import { ENGINES, serpapiSearch } from "@/server/serpapi";
 import { normalizeResults } from "@/server/normalize";
@@ -38,9 +39,9 @@ const schema = z.object({
 export async function POST(request: NextRequest) {
   try {
     sameOrigin(request);
+    const account = await requireAccount();
     const input = schema.parse(await bodyJson(request, 15000));
     await assertStorage();
-    const user = session(request);
     const params: Record<string, unknown> = {
       ...input.options,
       engine: ENGINES[input.source],
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
       delete params.hl;
     }
     const result = await serpapiSearch(params, {
-      sessionId: user.id,
+      accountId: account.accountId,
       runId: null,
       signal: request.signal,
       ephemeral: input.ephemeral,
@@ -84,9 +85,10 @@ export async function POST(request: NextRequest) {
       ),
       cached: result.cached,
     });
-    if (user.fresh) sessionCookie(response, user.id);
     return response;
   } catch (error) {
+    const response = authErrorResponse(error);
+    if (response) return response;
     return NextResponse.json({ error: publicError(error) }, { status: 400 });
   }
 }

@@ -10,10 +10,11 @@ export { ENGINES } from "./engines";
 export interface ToolResult {
   payload: Record<string, unknown>;
   cached: boolean;
+  stale?: boolean;
   retrievedAt: string;
 }
 export interface SearchContext {
-  sessionId: string;
+  accountId: string;
   runId: string | null;
   signal?: AbortSignal;
   ephemeral?: boolean;
@@ -62,6 +63,7 @@ export async function serpapiSearch(
     return {
       payload: cached.payload,
       cached: true,
+      stale: false,
       retrievedAt: cached.retrievedAt,
     };
   const existing = inFlight.get(key);
@@ -69,7 +71,7 @@ export async function serpapiSearch(
   const promise = withSearchSlot(async () => {
     context.signal?.throwIfAborted();
     const reserved = await reserveSearch(
-      context.sessionId,
+      { accountId: context.accountId },
       context.runId,
       engine,
       key,
@@ -133,6 +135,14 @@ export async function serpapiSearch(
         reserved,
         context.signal?.aborted ? "cancelled" : "error",
       );
+      const stale = await readCache(key, true).catch(() => null);
+      if (!context.signal?.aborted && stale?.stale)
+        return {
+          payload: stale.payload,
+          cached: true,
+          stale: true,
+          retrievedAt: stale.retrievedAt,
+        };
       throw error;
     } finally {
       await client.close().catch(() => {});

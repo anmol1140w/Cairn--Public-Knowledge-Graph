@@ -36,10 +36,23 @@ export const evidenceSchema = z.object({
   date: z.string().max(120).optional(),
   authors: z.array(z.string().max(300)).max(100).optional(),
   snippet: z.string().max(30000).optional(),
+  excerpt: z.string().max(30000).optional(),
   relevanceScore: z.number().min(0).max(1),
   engine: sourceSchema.optional(),
   retrievedAt: z.string().optional(),
   primary: z.boolean().optional(),
+  sourceRecord: z
+    .object({
+      id: z.string().max(200),
+      label: z.string().max(500),
+      domain: z.string().max(300).optional(),
+      kind: z.enum(["primary", "secondary", "official", "illustrative"]),
+      publicationDate: z.string().max(120).optional(),
+      retrievedAt: z.string().max(120).optional(),
+      freshness: z.enum(["current", "historical", "unknown"]).optional(),
+      independenceGroup: z.string().max(300).optional(),
+    })
+    .optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 export const searchSchema = z
@@ -93,10 +106,32 @@ export const relationshipSchema = z.object({
 export const claimSchema = z.object({
   id: z.string().max(100),
   text: z.string().max(3000),
-  evidenceIds: z.array(z.string().max(200)).min(1).max(30),
+  evidenceIds: z.array(z.string().max(200)).max(30),
   conflictingEvidenceIds: z.array(z.string().max(200)).max(30).default([]),
   confidence: z.enum(["high", "medium", "low", "insufficient"]),
   rationale: z.string().min(15).max(3000),
+  state: z.enum(["supported", "conflicted", "unknown"]).optional(),
+  reasonCodes: z
+    .array(
+      z.enum([
+        "SINGLE_SOURCE",
+        "METADATA_ONLY",
+        "ASSOCIATION",
+        "INCOMPLETE_EXCERPT",
+        "INDEPENDENCE_UNCLEAR",
+        "ILLUSTRATIVE",
+        "HISTORICAL",
+        "NO_CONFIRMATION",
+        "CONFLICT_FOUND",
+        "NOT_RUN_CONFLICT_CHECK",
+      ]),
+    )
+    .max(10)
+    .optional(),
+  sourceFamilyCount: z.number().int().min(0).max(100).optional(),
+  independentSourceCount: z.number().int().min(0).max(100).optional(),
+  conflictCheck: z.enum(["passed", "found", "not_run"]).optional(),
+  whatWouldRaiseConfidence: z.string().max(1000).optional(),
   supportingQuotes: z
     .array(
       z.object({ evidenceId: z.string().max(200), text: z.string().max(3000) }),
@@ -142,10 +177,23 @@ export const investigationSchema = z.object({
         state: z.enum(["pending", "running", "success", "error", "skipped"]),
         count: z.number().optional(),
         cached: z.boolean().optional(),
+        stale: z.boolean().optional(),
+        provider: z.string().max(100).optional(),
+        retrievedAt: z.string().max(120).optional(),
+        startedAt: z.string().max(120).optional(),
+        finishedAt: z.string().max(120).optional(),
+        durationMs: z.number().optional(),
         message: z.string().optional(),
       }),
     )
     .max(5),
+  usage: z
+    .object({
+      dailyUsed: z.number().int().min(0),
+      dailyBudget: z.number().int().min(1),
+      maxRequestsPerQuery: z.number().int().min(1).max(5),
+    })
+    .optional(),
   createdAt: z.string().max(100),
   warnings: z.array(z.string().max(1000)).max(50),
 });

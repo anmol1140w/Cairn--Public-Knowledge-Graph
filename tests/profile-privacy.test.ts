@@ -10,6 +10,16 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@/server/ollama", () => ({ modelJson: mocks.model }));
 vi.mock("@/server/serpapi", () => ({ serpapiSearch: mocks.search }));
+vi.mock("@/server/auth", () => ({
+  requireAccount: vi.fn().mockResolvedValue({
+    accountId: "11111111-1111-4111-8111-111111111111",
+    authUserId: "test-auth-user",
+    name: "Test user",
+    email: "test@example.com",
+    image: null,
+  }),
+  authErrorResponse: vi.fn().mockReturnValue(null),
+}));
 vi.mock("@/server/storage", () => ({
   checkpointer: mocks.checkpoint,
   assertStorage: vi.fn(),

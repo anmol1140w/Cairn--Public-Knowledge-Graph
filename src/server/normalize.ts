@@ -295,8 +295,15 @@ export function normalizeResults(
     }
     if (source === "scholar" && record(payload.search_parameters).cites)
       metadata.citationSearchId = record(payload.search_parameters).cites;
+    const id = evidenceId(type, url);
+    const sourceKind =
+      source === "scholar" || source === "patents"
+        ? "primary"
+        : source === "jobs"
+          ? "official"
+          : "secondary";
     output.push({
-      id: evidenceId(type, url),
+      id,
       type,
       title,
       source: publisherName,
@@ -304,10 +311,21 @@ export function normalizeResults(
       date,
       authors: authorNames.length ? authorNames : undefined,
       snippet: snippet || undefined,
+      excerpt: snippet || undefined,
       relevanceScore: relevance(query, title, snippet, index),
       engine: source,
       retrievedAt,
       primary: source === "patents" ? true : undefined,
+      sourceRecord: {
+        id,
+        label: publisherName,
+        domain: hostname || undefined,
+        kind: sourceKind,
+        publicationDate: date,
+        retrievedAt,
+        freshness: "unknown",
+        independenceGroup: `${source}:${publisherName.toLowerCase()}`,
+      },
       metadata,
     });
   }
@@ -334,6 +352,7 @@ export function normalizeResults(
         source: "Google knowledge panel",
         url: website,
         snippet: string(knowledge.description),
+        excerpt: string(knowledge.description),
         relevanceScore: relevance(
           query,
           string(knowledge.title),
@@ -341,6 +360,15 @@ export function normalizeResults(
           0,
         ),
         engine: "web",
+        sourceRecord: {
+          id: evidenceId(type, website),
+          label: "Google knowledge panel",
+          domain: new URL(website).hostname.replace(/^www\./, ""),
+          kind: "secondary",
+          retrievedAt,
+          freshness: "unknown",
+          independenceGroup: "web:google-knowledge-panel",
+        },
         retrievedAt,
         metadata: {
           descriptionSource: record(knowledge.description_source).name,

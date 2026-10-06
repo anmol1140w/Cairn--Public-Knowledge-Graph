@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { loginAs } from "../helpers/browser";
 
 test("knowledge universe, spatial evidence, commands, and source-linked export", async ({
   page,
@@ -78,11 +79,19 @@ test("demo progress and meaningful investigation modes", async ({ page }) => {
     .locator(".main-nav")
     .getByRole("button", { name: "Scholar", exact: true })
     .click();
+  await page
+    .locator(".example-card")
+    .filter({ hasText: "Read efficient-inference papers" })
+    .click();
   await expect(page.locator(".scholar-insights")).toBeVisible();
   await expect(page.locator(".result-row")).toHaveCount(4);
   await page
     .locator(".main-nav")
     .getByRole("button", { name: "News", exact: true })
+    .click();
+  await page
+    .locator(".example-card")
+    .filter({ hasText: "Compare AI announcements" })
     .click();
   await expect(page.locator(".news-insights")).toBeVisible();
   await expect(page.locator(".novelty-panel")).toContainText(
@@ -96,6 +105,10 @@ test("demo progress and meaningful investigation modes", async ({ page }) => {
   await page
     .locator(".main-nav")
     .getByRole("button", { name: "Jobs", exact: true })
+    .click();
+  await page
+    .locator(".example-card")
+    .filter({ hasText: "Inspect research career examples" })
     .click();
   await expect(page.locator(".illustrative-label")).toHaveCount(2);
   await expect(page.locator(".result-relevance").first()).toContainText(
@@ -173,6 +186,7 @@ test("mobile accessibility, timeline, comparison, and empty filters", async ({
 test("live error state preserves the labelled demo and supports retry without paid calls", async ({
   page,
 }) => {
+  await loginAs(page);
   await page.route("**/api/search", (route) =>
     route.fulfill({
       status: 503,
@@ -200,6 +214,33 @@ test("live error state preserves the labelled demo and supports retry without pa
   await expect(page.locator(".search-error")).toBeVisible();
 });
 
+test("live mode requires a signed-in account before leaving Demo", async ({
+  page,
+}) => {
+  await page.route("**/api/me", (route) =>
+    route.fulfill({
+      status: 200,
+      json: {
+        authenticated: false,
+        authConfigured: true,
+        user: null,
+      },
+    }),
+  );
+  await page.route("**/api/status", (route) =>
+    route.fulfill({
+      status: 200,
+      json: { searchConfigured: true, usage: null },
+    }),
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "Switch to live search" }).click();
+  await expect(page.locator(".data-mode")).toContainText("Demo data");
+  await expect(page.locator(".toast")).toContainText(
+    "Sign in with Google before selecting Live search.",
+  );
+});
+
 test("source selection keeps demo claims scoped to available evidence", async ({
   page,
 }) => {
@@ -220,4 +261,20 @@ test("source selection keeps demo claims scoped to available evidence", async ({
     "does not establish the research summary",
   );
   await expect(page.locator(".result-row")).toHaveCount(2);
+});
+
+test("six-step onboarding is skippable and remembers completion", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "Dismiss display preferences introduction" })
+    .click();
+  await expect(page.locator(".onboarding-guide")).toContainText("1/6");
+  await page.getByRole("button", { name: "Next" }).click();
+  await expect(page.locator(".onboarding-guide")).toContainText("2/6");
+  await page.getByRole("button", { name: "Skip tour" }).click();
+  await expect(page.locator(".onboarding-guide")).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator(".onboarding-guide")).toHaveCount(0);
 });

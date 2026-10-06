@@ -1,6 +1,6 @@
 # Cairn renovation change list
 
-The seven phases cover branding, readability, professional themes/layout, focus-safe controls, graph behaviour/performance, optional profiles/privacy, and offline examples/verification/documentation.
+The renovation phases cover branding, readability, professional themes/layout, focus-safe controls, graph behaviour/performance, optional profiles/privacy, offline examples/verification/documentation, and account authentication/ownership.
 
 ## Branding and project configuration
 
@@ -72,6 +72,23 @@ The seven phases cover branding, readability, professional themes/layout, focus-
 - `docs/screenshots/cairn-390-profile.png`
 - `docs/screenshots/cairn-evidence.png`
 
+## Authentication and account ownership
+
+- `auth.ts`
+- `src/server/auth.ts`
+- `src/server/auth-redirect.ts`
+- `src/server/schema.ts`
+- `src/server/storage.ts`
+- `src/components/account-control.tsx`
+- `src/app/api/auth/[...nextauth]/route.ts`
+- `src/app/api/me/route.ts`
+- `src/app/api/investigations/route.ts`
+- `src/app/api/investigations/[id]/route.ts`
+- `migrations/0002_auth_accounts.sql`
+- `docs/phase2-authentication.md`
+- `tests/auth.test.ts`
+- `tests/api-auth-boundary.test.ts`
+
 ## Verification
 
 - `tests/evidence.test.ts`
@@ -88,7 +105,17 @@ The seven phases cover branding, readability, professional themes/layout, focus-
 
 Phase 1 foundations: `scripts/check-contrast.mjs`, `src/lib/copy.ts`, `tests/helpers/browser.ts`, `docs/phase1-foundations.md`, and the added design tokens/shared contracts in `src/app/globals.css` and `src/lib/types.ts`.
 
-Checks include brand synchronization, ESLint, TypeScript, offline unit/integration and Chromium browser tests, WCAG AA automated audits, a production build, browser-asset secret scanning and screenshot generation. Browser tests use port 3100 and `.next-tests`; screenshots use port 3101. Both use preloaded/mock data and make no paid search/model requests.
+Phase 2 authentication: Google OAuth/Auth.js database sessions, PKCE/state/nonce checks, redirect allowlists, account-owned live investigations, per-investigation/account deletion, protected history/enrichment/export APIs, and demo-compatible signed-out behavior are documented in `docs/phase2-authentication.md`.
+
+Phase 3 workspaces: `docs/phase3-workspaces.md` covers per-mode state, stale-response guards, and the explicit mobile viewer activation boundary.
+
+Phase 4 assessment: `docs/phase4-evidence-assessment.md` covers structured source metadata, quote-only grounding, independence/conflict reason codes, and the separate Still unknown state.
+
+Phase 5 live resilience: `docs/phase5-live-resilience.md` covers source timing/cache metadata, stale-cache fallback, partial provider failures, and visible daily usage.
+
+Phase 6 hardening: `docs/phase6-experience-hardening.md` covers the six-step onboarding guide, privacy boundaries, deletion/export behavior, and deferred sharing.
+
+Checks include brand synchronization, ESLint, TypeScript, offline unit/integration and Chromium browser tests, WCAG AA automated audits, a production build, browser-asset secret scanning and screenshot generation. Browser tests use port 3100 and `.next-tests`; screenshots use port 3101. Both use preloaded/mock data and make no paid search/model requests. The mode-isolation characterization is now passing rather than expected-failing.
 
 ## Remaining limits
 

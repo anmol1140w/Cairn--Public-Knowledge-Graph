@@ -13,7 +13,12 @@ import {
   X,
 } from "lucide-react";
 import { useKnowledge } from "@/lib/store";
-import { MODES, SOURCE_LABELS, type SourceEngine } from "@/lib/types";
+import {
+  MODES,
+  SOURCE_LABELS,
+  type SourceEngine,
+  type UsageSummary,
+} from "@/lib/types";
 import { PROMPTS } from "@/lib/demo";
 import { STAGES, useSearch } from "@/lib/use-search";
 import { EntityPanel, EvidenceDrawer } from "./panels";
@@ -25,6 +30,53 @@ import { Explorer } from "./graph/explorer";
 import { useProfiles } from "@/lib/profile-store";
 import { profileChips } from "@/lib/profiles";
 import { EXAMPLES } from "@/lib/examples";
+import { COPY } from "@/lib/copy";
+import { AccountControl } from "./account-control";
+
+function OnboardingGuide({
+  step,
+  onStep,
+}: {
+  step: number;
+  onStep: (step: number) => void;
+}) {
+  const item = COPY.onboarding[step];
+  if (!item) return null;
+  return (
+    <section className="onboarding-guide" aria-label="Cairn getting started">
+      <div className="onboarding-progress" aria-label={`Step ${step + 1} of 6`}>
+        {COPY.onboarding.map((_, index) => (
+          <span
+            key={index}
+            className={index === step ? "active" : index < step ? "done" : ""}
+          />
+        ))}
+      </div>
+      <div className="onboarding-copy">
+        <span className="eyebrow">GETTING STARTED · {step + 1}/6</span>
+        <h3>{item.title}</h3>
+        <p>{item.body}</p>
+      </div>
+      <div className="onboarding-actions">
+        {step > 0 && (
+          <button className="text-button" onClick={() => onStep(step - 1)}>
+            Back
+          </button>
+        )}
+        <button className="text-button" onClick={() => onStep(6)}>
+          Skip tour
+        </button>
+        <button
+          className="primary-button"
+          onClick={() => onStep(step === COPY.onboarding.length - 1 ? 6 : step + 1)}
+        >
+          {step === COPY.onboarding.length - 1 ? "Start exploring" : "Next"}
+          <ArrowRight size={15} />
+        </button>
+      </div>
+    </section>
+  );
+}
 
 export function KnowledgeApp() {
   const s = useKnowledge();
@@ -33,13 +85,30 @@ export function KnowledgeApp() {
   const set = s.set;
   const { search, cancel } = useSearch();
   const [liveReady, setLiveReady] = useState<boolean | null>(null);
+  const [usage, setUsage] = useState<UsageSummary | null>(null);
+  const [authState, setAuthState] = useState<{
+    configured: boolean;
+    authenticated: boolean;
+  } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const activeMode = MODES.find((mode) => mode.id === s.mode)!;
   useEffect(() => {
     fetch("/api/status")
       .then((r) => r.json())
-      .then((data) => setLiveReady(data.searchConfigured))
+      .then((data) => {
+        setLiveReady(data.searchConfigured);
+        setUsage(data.usage ?? null);
+      })
       .catch(() => setLiveReady(false));
+    fetch("/api/me")
+      .then((response) => response.json())
+      .then((data) =>
+        setAuthState({
+          configured: Boolean(data.authConfigured),
+          authenticated: Boolean(data.authenticated && data.user),
+        }),
+      )
+      .catch(() => setAuthState(null));
   }, []);
   useEffect(() => {
     if (!s.toast) return;
@@ -96,6 +165,17 @@ export function KnowledgeApp() {
     return () => document.removeEventListener("keydown", onKey);
   }, [s]);
   const toggleLive = () => {
+    if (s.demo && !authState?.authenticated) {
+      s.set({
+        toast: authState?.configured
+          ? "Sign in with Google before selecting Live search."
+          : authState === null
+            ? "Sign in with Google before selecting Live search."
+            : "Live search requires a signed-in Google account, but authentication is not configured on this server.",
+      });
+      document.querySelector<HTMLElement>(".account-button")?.focus();
+      return;
+    }
     if (s.demo && !liveReady) {
       s.set({
         toast:
@@ -151,6 +231,7 @@ export function KnowledgeApp() {
             ))}
           </nav>
           <div className="header-actions">
+            <AccountControl />
             <button
               className="data-mode"
               onClick={toggleLive}
@@ -162,6 +243,11 @@ export function KnowledgeApp() {
               <span className="status-dot" />
               {s.demo ? "Demo data" : "Live"}
             </button>
+            {!s.demo && usage && (
+              <span className="usage-header" title="Source attempts reserved today">
+                {usage.dailyUsed}/{usage.dailyBudget} today
+              </span>
+            )}
             <button
               className="icon-button"
               aria-label={
@@ -216,6 +302,12 @@ export function KnowledgeApp() {
                 <X size={20} />
               </button>
             </section>
+          )}
+          {s.preferencesSeen && s.onboardingStep < COPY.onboarding.length && (
+            <OnboardingGuide
+              step={s.onboardingStep}
+              onStep={(onboardingStep) => s.set({ onboardingStep })}
+            />
           )}
           <section
             className="universe-hero"

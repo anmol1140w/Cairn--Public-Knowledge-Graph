@@ -927,8 +927,8 @@ function HistoryModal() {
   return (
     <ModalShell title="Saved investigations" eyebrow="RECENT INVESTIGATIONS">
       <p className="modal-description">
-        Saved for this browser’s private session. Reopening an investigation
-        reuses its source snapshot.
+        Saved to your signed-in account. Reopening an investigation reuses its
+        source snapshot without making new provider requests.
       </p>
       {error && (
         <p className="inline-error" role="alert">

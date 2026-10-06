@@ -1,10 +1,11 @@
 "use client";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { DEMO } from "./demo";
 import { EXAMPLES, scopeDemo } from "./examples";
 import { useKnowledge } from "./store";
 import { useProfiles } from "./profile-store";
 import type { ProgressEvent, SourceEngine } from "./types";
+import { isCurrentRequest } from "./request-generation";
 
 export const STAGES = [
   "Understanding query",
@@ -19,7 +20,15 @@ export const STAGES = [
 ];
 export function useSearch() {
   const controller = useRef<AbortController | null>(null);
+  const generation = useRef(0);
+  const mode = useKnowledge((state) => state.mode);
+  useEffect(() => {
+    generation.current += 1;
+    controller.current?.abort();
+    controller.current = null;
+  }, [mode]);
   const cancel = () => {
+    generation.current += 1;
     controller.current?.abort();
     useKnowledge
       .getState()
@@ -42,9 +51,24 @@ export function useSearch() {
     controller.current?.abort();
     const abort = new AbortController();
     controller.current = abort;
-    const set = state.set;
-    set({
+    const token = ++generation.current;
+    const requestMode = state.mode;
+    const requestGeneration = state.searchGeneration + 1;
+    const isCurrent = () =>
+      isCurrentRequest({
+        token,
+        currentToken: generation.current,
+        mode: requestMode,
+        currentMode: useKnowledge.getState().mode,
+        generation: requestGeneration,
+        currentGeneration: useKnowledge.getState().searchGeneration,
+      });
+    const update = (patch: Parameters<typeof state.set>[0]) => {
+      if (isCurrent()) useKnowledge.getState().set(patch);
+    };
+    useKnowledge.getState().set({
       query,
+      searchGeneration: requestGeneration,
       searching: true,
       stages: {},
       sourceStatuses: [],
@@ -58,8 +82,9 @@ export function useSearch() {
     try {
       if (state.demo) {
         for (const stage of STAGES.slice(0, 8)) {
+          if (!isCurrent()) return;
           abort.signal.throwIfAborted();
-          set({
+          update({
             stages: { ...useKnowledge.getState().stages, [stage]: "running" },
           });
           await new Promise<void>((resolve, reject) => {
@@ -76,13 +101,15 @@ export function useSearch() {
               { once: true },
             );
           });
-          set({
+          if (!isCurrent()) return;
+          update({
             stages: { ...useKnowledge.getState().stages, [stage]: "complete" },
           });
         }
         const sample = EXAMPLES.find((e) => e.mode === state.mode)?.run ?? DEMO;
         const run = scopeDemo(sample, sourceOverride ?? state.sources);
-        set({
+        if (!isCurrent()) return;
+        update({
           run: saveProfile ? { ...run, profile } : run,
           searching: false,
           hasSearched: true,
@@ -108,6 +135,7 @@ export function useSearch() {
         }),
         signal: abort.signal,
       });
+      if (!isCurrent()) return;
       if (!response.ok) {
         const data = await response.json();
         throw new Error(
@@ -127,18 +155,19 @@ export function useSearch() {
         const frames = buffer.split("\n\n");
         buffer = frames.pop() ?? "";
         for (const frame of frames) {
+          if (!isCurrent()) return;
           const line = frame.split("\n").find((v) => v.startsWith("data: "));
           if (!line) continue;
           const event = JSON.parse(line.slice(6)) as ProgressEvent;
           if (event.kind === "stage" && event.stage)
-            set({
+            update({
               stages: {
                 ...useKnowledge.getState().stages,
                 [event.stage]: event.state ?? "running",
               },
             });
           if (event.kind === "source" && event.source)
-            set({
+            update({
               sourceStatuses: [
                 ...useKnowledge
                   .getState()
@@ -150,8 +179,9 @@ export function useSearch() {
             });
           if (event.kind === "result" && event.result) {
             receivedResult = true;
+            if (!isCurrent()) return;
             details.consumeConsent();
-            set({
+            update({
               run: event.result,
               searching: false,
               hasSearched: true,
@@ -170,8 +200,8 @@ export function useSearch() {
           "The connection ended before your evidence graph was ready.",
         );
     } catch (error) {
-      if (abort.signal.aborted) return;
-      set({
+      if (abort.signal.aborted || !isCurrent()) return;
+      update({
         searching: false,
         error:
           error instanceof Error

@@ -23,3 +23,8 @@ Scholar and News are the primary public-interest demo journey: question → sour
 ## Approval record
 
 The user approved Google OAuth via Auth.js, server-owned per-account investigations, and the proposed D3–D9 defaults on 6 October 2026.
+
+Implementation record: D1–D3 and D8 are implemented; D4–D7 are implemented in
+the mode workspace, viewer, assessment and onboarding phases; D9 remains
+deferred by decision. See `docs/phase2-authentication.md` and
+`docs/phase3-workspaces.md` through `docs/phase6-experience-hardening.md`.

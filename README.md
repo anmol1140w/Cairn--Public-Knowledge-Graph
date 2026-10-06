@@ -43,7 +43,7 @@ Requirements: **Node.js 22+**, npm, and Docker or PostgreSQL for live investigat
 
 ```bash
 npm install
-# Configure ignored .env.local from .env.example for live search.
+# Configure ignored .env.local from .env.example for live search and Google sign-in.
 npm run db:up
 npm run db:migrate
 npm run dev
@@ -56,7 +56,16 @@ npm run build
 npm start
 ```
 
-Deploy on a Node-runtime host supporting streamed requests of up to five minutes. Set `APP_HTTPS=true` behind HTTPS, configure the daily budget and run migrations first.
+For live investigations, configure `AUTH_SECRET`, `AUTH_GOOGLE_ID` and
+`AUTH_GOOGLE_SECRET` in `.env.local`. Register
+`http://localhost:3000/api/auth/callback/google` with Google for local
+development, or the matching HTTPS callback for production. Set
+`AUTH_URL` to the canonical origin and list any approved preview origins in
+`AUTH_ALLOWED_REDIRECT_ORIGINS`. Live search and saved investigations require
+Google sign-in; labelled demo examples and demo exports remain available
+without credentials.
+
+Deploy on a Node-runtime host supporting streamed requests of up to five minutes. Set `APP_HTTPS=true` behind HTTPS, configure the daily budget and run migrations first. See [Phase 2 authentication](docs/phase2-authentication.md) for the ownership and deletion rules.
 
 ## Workspace and accessibility
 
@@ -76,7 +85,7 @@ The desktop workspace has **About you/filters → Explorer → details/evidence*
 
 Viewer shortcuts: **+ / −** zoom, **0** fit, **F** fullscreen, arrows pan, **Esc** release/close. App shortcuts: **/** search, **Cmd/Ctrl K** commands, **G/S/N/J/P** modes, **T** timeline, **?** shortcuts.
 
-Solid connections come from source-linked metadata. Dashed connections are inferred associations. **Strong / Moderate / Weak** confidence describes claim support, not probability, bias, hiring likelihood or a truth score. Use **Why?** and the evidence drawer to inspect the rationale and exact quotes.
+Solid connections come from source-linked metadata. Dashed connections are inferred associations. **Strong / Moderate / Weak** confidence describes claim support, not probability, bias, hiring likelihood or a truth score. **Still unknown** is a separate assessment state used when IDs, exact quotes or conflict checks are incomplete. Use **Why?** and the evidence drawer to inspect the rationale, reason codes and exact quotes.
 
 ## Optional profiles and privacy
 
@@ -91,7 +100,7 @@ Details are held in **sessionStorage for this tab**. Display preferences/theme u
 
 Live search sends the current profile and question to Ollama for planning, and source excerpts for grounded answers. Relevant role/topic/location/date/keyword terms go to SerpApi. Salary/grades/authorization are not copied into deterministic search terms. Local `.txt` résumé import reads only in the browser; the user reviews detected skills before adding them, and the résumé file is never uploaded. Providers have their own processing/retention policies.
 
-Without **Save with this investigation**, profile-shaped live runs skip Cairn’s persistent LangGraph checkpoints, model/source-response caches and final investigation snapshot. Only the original query/request accounting remains in the database. Explicit save consent applies to the next successful investigation; a saved profile can be reopened with that snapshot. Profiles reuse the existing planner/ranker and **do not add search calls**.
+Without **Save with this investigation**, profile-shaped live runs skip Cairn’s persistent LangGraph checkpoints, model/source-response caches and final investigation snapshot. Only the original query/request accounting remains in the database. Explicit save consent applies to the next successful investigation; a saved profile can be reopened from the signed-in account with that snapshot. Profiles reuse the existing planner/ranker and **do not add search calls**.
 
 ## How live investigations work
 
@@ -120,7 +129,7 @@ Enrichment and additional pages are **on demand**. Actual returned Scholar autho
 - AI-extracted associations stay inferred. Dates preserve source precision. Missing eligibility, affiliations, status, deadlines and citations are not invented.
 - At most **5 initial SerpApi attempts/investigation**, **2 concurrent search calls**, **2 concurrent model calls**, and **25 attempts per UTC day** by default.
 - Budgets are transactionally reserved before calls, including failed attempts; up to three investigations/session/minute. User-requested pagination stays inside the same daily budget.
-- Ordinary news/jobs responses cache for 15 minutes; other source/model responses for one hour. Private profile-shaped responses skip persistent writes. Provider-side caching remains enabled.
+- Ordinary news/jobs responses cache for 15 minutes; other source/model responses for one hour. If a provider fails, an expired matching snapshot is labelled **stale cache** rather than presented as current. Private profile-shaped responses skip persistent writes. Provider-side caching remains enabled.
 - Both API keys are server-only, never `NEXT_PUBLIC_`; diagnostics/snapshots are redacted. Same-origin mutation endpoints, aborts/timeouts, retries and partial results are supported.
 
 ## Checks

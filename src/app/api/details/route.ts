@@ -3,7 +3,8 @@ import { z } from "zod";
 import { evidenceSchema } from "@/server/validation";
 import { ENGINES, serpapiSearch } from "@/server/serpapi";
 import { assertStorage } from "@/server/storage";
-import { bodyJson, sameOrigin, session, sessionCookie } from "@/server/http";
+import { bodyJson, sameOrigin } from "@/server/http";
+import { authErrorResponse, requireAccount } from "@/server/auth";
 import { publicError } from "@/server/config";
 import {
   normalizeResults,
@@ -26,9 +27,9 @@ const detailsSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     sameOrigin(request);
+    const account = await requireAccount();
     const input = detailsSchema.parse(await bodyJson(request));
     await assertStorage();
-    const user = session(request);
     const e = input.evidence;
     const meta = e?.metadata ?? {};
     let params: Record<string, unknown>;
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
         "This source did not return an enrichment identifier. Open its original URL for details.",
       );
     const result = await serpapiSearch(params, {
-      sessionId: user.id,
+      accountId: account.accountId,
       runId: null,
       signal: request.signal,
       ephemeral: input.ephemeral,
@@ -173,9 +174,10 @@ export async function POST(request: NextRequest) {
       cached: result.cached,
       retrievedAt: result.retrievedAt,
     });
-    if (user.fresh) sessionCookie(response, user.id);
     return response;
   } catch (error) {
+    const response = authErrorResponse(error);
+    if (response) return response;
     return NextResponse.json({ error: publicError(error) }, { status: 400 });
   }
 }

@@ -2,6 +2,7 @@ import { PDFDocument, PDFName, PDFString, StandardFonts, rgb } from "pdf-lib";
 import { strToU8, zipSync } from "fflate";
 import type { Investigation } from "@/lib/types";
 import { BRAND } from "@/lib/brand";
+import { claimAssessment } from "@/lib/confidence";
 
 export function markdownReport(run: Investigation): string {
   const lines = [
@@ -23,11 +24,15 @@ export function markdownReport(run: Investigation): string {
     "",
   ];
   for (const claim of run.claims) {
+    const assessment = claimAssessment(claim);
     lines.push(
       `### ${claim.id}: ${claim.text}`,
       "",
-      `Confidence: **${claim.confidence.toUpperCase()}** (qualitative)`,
+      `Assessment: **${assessment.label}**${assessment.state === "supported" ? ` · ${claim.confidence.toUpperCase()} confidence` : ""}`,
       claim.rationale,
+      `State: ${assessment.state}`,
+      `Reason codes: ${claim.reasonCodes?.join(", ") || "None recorded"}`,
+      `What would raise confidence: ${assessment.whatWouldRaiseConfidence}`,
       `Supporting evidence: ${claim.evidenceIds.join(", ")}`,
       `Conflicting evidence: ${claim.conflictingEvidenceIds.join(", ") || "None established"}`,
       "",
@@ -47,7 +52,7 @@ export function markdownReport(run: Investigation): string {
         ? ["**ILLUSTRATIVE — not a live vacancy**"]
         : []),
       "",
-      item.snippet ?? "No excerpt provided.",
+       item.excerpt ?? item.snippet ?? "No excerpt provided.",
       "",
     );
   lines.push(
@@ -56,6 +61,11 @@ export function markdownReport(run: Investigation): string {
     "| Source entity | Relationship | Target entity | Evidence IDs | Inferred |",
     "|---|---|---|---|---|",
   );
+  if (run.usage)
+    lines.push(
+      "",
+      `Usage: ${run.usage.dailyUsed}/${run.usage.dailyBudget} source attempts reserved today; maximum ${run.usage.maxRequestsPerQuery} initial attempts per investigation.`,
+    );
   for (const edge of run.relationships)
     lines.push(
       `| ${edge.source} | ${edge.type} | ${edge.target} | ${edge.evidenceIds.join(", ")} | ${edge.inferred ? "Yes" : "No"} |`,
@@ -99,7 +109,10 @@ export function csvReport(run: Investigation): Uint8Array {
           "url",
           "date",
           "authors",
-          "snippet",
+           "snippet",
+           "excerpt",
+           "sourceKind",
+           "retrievedAt",
           "relevance",
           "metadata",
         ],
@@ -112,7 +125,10 @@ export function csvReport(run: Investigation): Uint8Array {
           e.url,
           e.date,
           e.authors,
-          e.snippet,
+           e.snippet,
+           e.excerpt,
+           e.sourceRecord?.kind,
+           e.retrievedAt,
           e.relevanceScore,
           e.metadata,
         ]),
@@ -146,6 +162,9 @@ export function csvReport(run: Investigation): Uint8Array {
           "conflictingEvidenceIds",
           "confidence",
           "rationale",
+          "state",
+          "reasonCodes",
+          "whatWouldRaiseConfidence",
           "supportingQuotes",
           "conflictingQuotes",
         ],
@@ -156,6 +175,9 @@ export function csvReport(run: Investigation): Uint8Array {
           c.conflictingEvidenceIds,
           c.confidence,
           c.rationale,
+          claimAssessment(c).state,
+          c.reasonCodes,
+          c.whatWouldRaiseConfidence,
           c.supportingQuotes,
           c.conflictingQuotes,
         ]),
@@ -287,11 +309,14 @@ export async function pdfReport(run: Investigation): Promise<Uint8Array> {
   draw(run.summary);
   draw("Evidence-backed claims", 14, true);
   for (const claim of run.claims) {
+    const assessment = claimAssessment(claim);
     draw(claim.text, 11, true);
     draw(
-      `Confidence: ${claim.confidence.toUpperCase()} (qualitative). ${claim.rationale}`,
+      `Assessment: ${assessment.label}${assessment.state === "supported" ? ` (${claim.confidence.toUpperCase()} confidence)` : ""}. ${claim.rationale}`,
       9,
     );
+    draw(`State: ${assessment.state}. Reason codes: ${claim.reasonCodes?.join(", ") || "None recorded"}`, 8);
+    draw(`What would raise confidence: ${assessment.whatWouldRaiseConfidence}`, 8);
     draw(`Supporting source IDs: ${claim.evidenceIds.join(", ")}`, 8);
     for (const quote of claim.supportingQuotes ?? [])
       draw(`"${quote.text}" [${quote.evidenceId}]`, 8);
@@ -310,7 +335,7 @@ export async function pdfReport(run: Investigation): Promise<Uint8Array> {
     if (e.authors?.length) draw(`Authors: ${e.authors.join(", ")}`, 8);
     if (e.metadata?.illustrative)
       draw("ILLUSTRATIVE ROLE - not a live vacancy", 8, true);
-    if (e.snippet) draw(e.snippet, 9);
+    if (e.excerpt ?? e.snippet) draw(e.excerpt ?? e.snippet!, 9);
     draw(e.url, 8, false, e.url);
   }
   draw("Relationship appendix", 14, true);

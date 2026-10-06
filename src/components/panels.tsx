@@ -24,28 +24,33 @@ import {
 } from "@/lib/types";
 import { formatDate, skillMatch } from "@/lib/graph-utils";
 import { useDialog } from "./use-dialog";
-import { CONFIDENCE_LABELS } from "@/lib/confidence";
+import { claimAssessment } from "@/lib/confidence";
 
 export function Confidence({ claim }: { claim: Claim }) {
-  const bars = { high: 10, medium: 6, low: 3, insufficient: 1 };
+  const assessment = claimAssessment(claim);
+  const bars = Math.round(assessment.width / 10);
   return (
-    <div className={`confidence-block ${claim.confidence}`}>
+    <div className={`confidence-block ${claim.confidence} ${assessment.state}`}>
       <div className="confidence-top">
         <span>
           <ShieldCheck size={16} /> Evidence confidence
         </span>
-        <strong>{CONFIDENCE_LABELS[claim.confidence]}</strong>
+        <strong>{assessment.label}</strong>
       </div>
       <div className="confidence-meter">
         {Array.from({ length: 10 }, (_, i) => (
           <span
             key={i}
-            className={i < bars[claim.confidence] ? "filled" : ""}
+            className={i < bars ? "filled" : ""}
           />
         ))}
       </div>
-      <p>{claim.rationale}</p>
-      <small>A qualitative assessment, not a probability of truth.</small>
+      <p>{assessment.reason}</p>
+      <small>
+        {assessment.state === "unknown"
+          ? `What would help: ${assessment.whatWouldRaiseConfidence}`
+          : `Conflict check: ${claim.conflictCheck ?? "not recorded"}. A qualitative assessment, not a probability of truth.`}
+      </small>
     </div>
   );
 }
@@ -102,6 +107,17 @@ export function EntityPanel({
     kind: "auto" | "cites" | "trends" | "related" | "listing" = "auto",
   ) => {
     if (!main && kind !== "trends") return;
+    const requestMode = s.mode;
+    const requestRunId = s.run.id;
+    const requestGeneration = s.searchGeneration;
+    const stillCurrent = () => {
+      const current = useKnowledge.getState();
+      return (
+        current.mode === requestMode &&
+        current.run.id === requestRunId &&
+        current.searchGeneration === requestGeneration
+      );
+    };
     setDetailState("running");
     setDetailKind(kind);
     try {
@@ -119,6 +135,7 @@ export function EntityPanel({
       const result = await response.json();
       if (!response.ok)
         throw new Error(result.error ?? "Details could not be retrieved.");
+      if (!stillCurrent()) return;
       setDetails((current) => ({ ...current, ...result.metadata }));
       setDetailState("success");
       if (kind === "auto" && main) {
@@ -189,6 +206,7 @@ export function EntityPanel({
         });
       }
     } catch (error) {
+      if (!stillCurrent()) return;
       setDetailError(
         error instanceof Error ? error.message : "Source interrupted.",
       );
@@ -197,6 +215,7 @@ export function EntityPanel({
   };
   const detailRows = [
     ["Source", main?.source],
+    ["Source kind", main?.sourceRecord?.kind],
     ["Publication date", main?.date ? formatDate(main.date) : undefined],
     ["Retrieved", main?.retrievedAt ? formatDate(main.retrievedAt) : undefined],
     [
@@ -800,11 +819,19 @@ export function EvidenceDrawer() {
                 <span style={{ color: CATEGORIES[item.type].color }}>
                   {CATEGORIES[item.type].label}
                 </span>
-                <span>{item.primary ? "Primary source" : "Source record"}</span>
+                  <span>
+                    {item.primary || item.sourceRecord?.kind === "primary"
+                      ? "Primary source"
+                      : item.sourceRecord?.kind === "official"
+                        ? "Official source"
+                        : "Source record"}
+                  </span>
               </div>
               <h4>{item.title}</h4>
               <p>
-                {item.snippet ?? "No excerpt provided by the search source."}
+                {item.excerpt ??
+                  item.snippet ??
+                  "No excerpt provided by the search source."}
               </p>
               <div className="source-meta">
                 {item.source}
