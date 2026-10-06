@@ -171,3 +171,5 @@ Search excerpts are incomplete; they cannot prove methodology, universal consens
 Main code: `src/components/knowledge-app.tsx` (workspace), `src/components/graph/` (viewer/renderers), `src/components/profile-*.tsx` and `src/lib/profile*.ts` (profiles), `src/lib/personalization.ts` (grounded ranking/checklists), `src/server/agent.ts` (LangGraph), `src/server/serpapi.ts`/`ollama.ts` (providers), `src/server/graph-builder.ts` (provenance), `src/server/storage.ts` (persistence), `src/server/export.ts` (reports), and `src/app/api/` (server endpoints).
 
 Official references: [SerpApi MCP](https://serpapi.com/mcp), [SerpApi engines](https://serpapi.com/search-engine-apis), [Ollama Cloud](https://docs.ollama.com/cloud), [LangGraph](https://docs.langchain.com/oss/javascript/langgraph/overview).
+
+Deployed Link: [Cairn-Public-Knowledge-Graph](https://cairn-pkg.vercel.app/).
