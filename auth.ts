@@ -9,6 +9,8 @@ import {
   authVerificationTokens,
 } from "./src/server/schema";
 import { safeRedirectUrl } from "./src/server/auth-redirect";
+import { authorizeGoogleSignIn, hasLegalAcceptance } from "./src/server/legal-consent";
+import { secureAuthCookies, sessionCookie, SESSION_MAX_AGE } from "./src/server/auth-cookies";
 
 export function safeRedirect(url: string, baseUrl: string) {
   return safeRedirectUrl(
@@ -23,12 +25,20 @@ export function safeRedirect(url: string, baseUrl: string) {
 }
 
 const authConfig = (): NextAuthConfig => ({
-  adapter: DrizzleAdapter(db(), {
-    usersTable: authUsers,
-    accountsTable: authAccounts,
-    sessionsTable: authSessions,
-    verificationTokensTable: authVerificationTokens,
-  }),
+  adapter: {
+    ...DrizzleAdapter(db(), {
+      usersTable: authUsers,
+      accountsTable: authAccounts,
+      sessionsTable: authSessions,
+      verificationTokensTable: authVerificationTokens,
+    }),
+    // New accounts are created atomically by the explicit acceptance endpoint.
+    // Auth.js retains responsibility for returning-user OAuth and sessions.
+    async createUser() {
+      throw new Error("Complete policy acceptance before creating an account.");
+    },
+  },
+  pages: { signIn: "/signin", error: "/signin" },
   providers: [
     Google({
       // Auth.js validates these OAuth checks and stores the short-lived
@@ -38,19 +48,23 @@ const authConfig = (): NextAuthConfig => ({
   ],
   session: {
     strategy: "database",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: SESSION_MAX_AGE,
     updateAge: 60 * 60 * 24,
   },
-  useSecureCookies:
-    process.env.NODE_ENV === "production" || process.env.APP_HTTPS === "true",
+  useSecureCookies: secureAuthCookies(),
+  cookies: { sessionToken: sessionCookie() },
   trustHost:
     process.env.AUTH_TRUST_HOST === "true" || process.env.NODE_ENV !== "production",
   callbacks: {
+    signIn: authorizeGoogleSignIn,
     async redirect({ url, baseUrl }) {
       return safeRedirect(url, baseUrl);
     },
     async session({ session, user }) {
-      if (session.user) session.user.id = user.id;
+      if (session.user) {
+        session.user.id = user.id;
+        session.user.legalAccepted = hasLegalAcceptance(user);
+      }
       return session;
     },
   },

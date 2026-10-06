@@ -94,6 +94,18 @@ export const authUsers = pgTable("auth_users", {
   email: text("email").unique(),
   emailVerified: timestamp("email_verified", { withTimezone: true }),
   image: text("image"),
+  legalAcceptedAt: timestamp("legal_accepted_at", { withTimezone: true }),
+  termsVersion: text("terms_version"),
+  privacyVersion: text("privacy_version"),
+});
+export const pendingGoogleSignIns = pgTable("pending_google_signins", {
+  tokenHash: text("token_hash").primaryKey(),
+  providerAccountId: text("provider_account_id").notNull(),
+  name: text("name"),
+  email: text("email").notNull(),
+  image: text("image"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 export const authAccounts = pgTable(
   "auth_accounts",

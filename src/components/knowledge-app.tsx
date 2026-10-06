@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion, MotionConfig } from "framer-motion";
 import {
   Accessibility,
@@ -89,6 +90,7 @@ export function KnowledgeApp() {
   const [authState, setAuthState] = useState<{
     configured: boolean;
     authenticated: boolean;
+    consentRequired: boolean;
   } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const activeMode = MODES.find((mode) => mode.id === s.mode)!;
@@ -106,6 +108,7 @@ export function KnowledgeApp() {
         setAuthState({
           configured: Boolean(data.authConfigured),
           authenticated: Boolean(data.authenticated && data.user),
+          consentRequired: Boolean(data.consentRequired),
         }),
       )
       .catch(() => setAuthState(null));
@@ -167,7 +170,9 @@ export function KnowledgeApp() {
   const toggleLive = () => {
     if (s.demo && !authState?.authenticated) {
       s.set({
-        toast: authState?.configured
+        toast: authState?.consentRequired
+          ? "Accept the Privacy Policy and Terms of Service to finish signing in."
+          : authState?.configured
           ? "Sign in with Google before selecting Live search."
           : authState === null
             ? "Sign in with Google before selecting Live search."
@@ -610,6 +615,8 @@ export function KnowledgeApp() {
               <button onClick={() => s.set({ modal: "export" })}>
                 Export evidence <ArrowDownToLine size={16} />
               </button>
+              <Link href="/privacy">Privacy</Link>
+              <Link href="/terms">Terms</Link>
             </div>
           </footer>
         </main>

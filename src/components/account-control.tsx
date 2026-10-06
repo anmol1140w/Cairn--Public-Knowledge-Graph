@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -17,6 +18,7 @@ export function AccountControl() {
   const [user, setUser] = useState<AccountUser | null>(null);
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [consentRequired, setConsentRequired] = useState(false);
 
   useEffect(() => {
     let controller = new AbortController();
@@ -29,9 +31,11 @@ export function AccountControl() {
           const data = (await response.json()) as {
             authConfigured?: boolean;
             user?: AccountUser | null;
+            consentRequired?: boolean;
           };
           setConfigured(Boolean(data.authConfigured));
           setUser(data.user ?? null);
+          setConsentRequired(Boolean(data.consentRequired));
         })
         .catch(() => {
           if (!requestController.signal.aborted) setConfigured(false);
@@ -65,13 +69,9 @@ export function AccountControl() {
 
   if (!user)
     return (
-      <form method="get" action="/api/auth/signin">
-        <input type="hidden" name="provider" value="google" />
-        <input type="hidden" name="callbackUrl" value="/" />
-        <button className="account-button" type="submit">
-          Sign in with Google
-        </button>
-      </form>
+      <Link className="account-button" href={consentRequired ? "/auth/consent" : "/signin"}>
+        {consentRequired ? "Complete sign-in" : "Sign in with Google"}
+      </Link>
     );
 
   return (

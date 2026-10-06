@@ -65,6 +65,15 @@ development, or the matching HTTPS callback for production. Set
 Google sign-in; labelled demo examples and demo exports remain available
 without credentials.
 
+New Google accounts review and explicitly accept the
+[Terms of Service](https://cairn-pkg.vercel.app/terms) and acknowledge the
+[Privacy Policy](https://cairn-pkg.vercel.app/privacy) before an account is
+created. PostgreSQL stores the acceptance timestamp and both policy versions;
+returning users are not asked again. Apply `migrations/0003_legal_acceptance.sql`
+through `npm run db:migrate` on the deployment database before redeploying.
+See [registration acceptance](docs/legal-registration.md) for the flow,
+legacy-account handling and opt-in database/browser checks.
+
 Deploy on a Node-runtime host supporting streamed requests of up to five minutes. Set `APP_HTTPS=true` behind HTTPS, configure the daily budget and run migrations first. See [Phase 2 authentication](docs/phase2-authentication.md) for the ownership and deletion rules.
 
 ## Workspace and accessibility

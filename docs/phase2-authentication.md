@@ -28,6 +28,12 @@ and makes persisted investigations account-owned.
 
 ## Storage migration
 
+Public Privacy and Terms pages and the server-enforced, one-time acceptance
+step are documented in [registration acceptance](legal-registration.md).
+Migration `0003_legal_acceptance.sql` stores the receipt on `auth_users` and
+adds expiring pending verified identities. New accounts are created only after
+acceptance; existing accounts without a receipt complete the step once.
+
 `migrations/0002_auth_accounts.sql` adds Auth.js tables and nullable
 `account_id` columns to queries, runs and search requests. Existing rows keep
 their anonymous `session_id` and remain orphaned; the application never

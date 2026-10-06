@@ -91,6 +91,17 @@ The renovation phases cover branding, readability, professional themes/layout, f
 
 ## Verification
 
+Public deployment policies and registration acceptance:
+`src/app/privacy/page.tsx`, `src/app/terms/page.tsx`,
+`src/app/signin/`, `src/app/auth/consent/page.tsx`,
+`src/app/api/account/accept/route.ts`, `src/components/public-page.tsx`,
+`src/components/consent-form.tsx`, `src/lib/legal.ts`,
+`src/server/legal-consent.ts`, `src/server/auth-cookies.ts`,
+`migrations/0003_legal_acceptance.sql` and `docs/legal-registration.md`.
+Tests: `tests/legal-consent.test.ts`,
+`tests/legal-consent.integration.test.ts`, `tests/e2e/legal.spec.ts` and
+`tests/e2e/legal-consent-db.spec.ts`.
+
 - `tests/evidence.test.ts`
 - `tests/graph-layout.test.ts`
 - `tests/profiles.test.ts`

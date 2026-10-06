@@ -16,6 +16,13 @@ export class AuthUnavailableError extends Error {
   }
 }
 
+export class LegalAcceptanceRequiredError extends Error {
+  constructor() {
+    super("Accept the Privacy Policy and Terms of Service to finish signing in.");
+    this.name = "LegalAcceptanceRequiredError";
+  }
+}
+
 export interface AuthenticatedAccount {
   accountId: string;
   authUserId: string;
@@ -45,6 +52,7 @@ export async function currentAccount(): Promise<AuthenticatedAccount | null> {
     throw new AuthUnavailableError();
   }
   if (!session?.user?.id) return null;
+  if (!session.user.legalAccepted) throw new LegalAcceptanceRequiredError();
   try {
     const account = await ensureApplicationAccount({
       authUserId: session.user.id,
@@ -75,6 +83,11 @@ export async function requireAccount() {
 }
 
 export function authErrorResponse(error: unknown) {
+  if (error instanceof LegalAcceptanceRequiredError)
+    return NextResponse.json(
+      { error: error.message, code: "CONSENT_REQUIRED", authConfigured: true, consentRequired: true },
+      { status: 403 },
+    );
   if (error instanceof AuthRequiredError)
     return NextResponse.json(
       { error: error.message, code: "AUTH_REQUIRED" },
